@@ -18,8 +18,16 @@
     /gravatar\.com|browser-intake-datadoghq\.com|\.wp\.com|intercomcdn\.com|sentry\.io|sentry_key=|intercom\.io|featuregates\.org|statsigapi\.net|google-analytics\.com|googletagmanager\.com|\/v1\/initialize|\/messenger\/|\/rgstr|\/v1\/sdk_exception|\/ces\/v1\/telemetry\/intake|\/ces\/statsc\/flush|\/ces\/v1\/(?:t|p|i|m)(?:\?|$)|\/backend-api\/beacons\//i;
   const trackingScriptPattern = /widget\.intercom\.io|googletagmanager\.com|google-analytics\.com/i;
 
-  const getValue = (key, fallback) => GM_getValue(key, fallback);
-  const setValue = (key, value) => GM_setValue(key, value);
+  const settingsCache = new Map();
+  const getValue = (key, fallback) => {
+    if (!settingsCache.has(key)) settingsCache.set(key, GM_getValue(key, fallback));
+    return settingsCache.get(key);
+  };
+  const setValue = (key, value) => {
+    settingsCache.set(key, value);
+    GM_setValue(key, value);
+    if (key === 'k_datasecblocklist') compileSensitiveRules(value);
+  };
 
   const features = [
     {
@@ -82,10 +90,14 @@
     constructor() {
       this.dbName = 'ChatGPTUtilityPanel';
       this.storeName = 'conversations';
+      this.dbPromise = null;
+      this.cache = new Map();
     }
 
     open() {
-      return new Promise((resolve, reject) => {
+      if (this.dbPromise) return this.dbPromise;
+
+      this.dbPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open(this.dbName, 1);
         request.onupgradeneeded = () => {
           const db = request.result;
@@ -93,9 +105,21 @@
             db.createObjectStore(this.storeName, { keyPath: 'id' });
           }
         };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          db.onversionchange = () => {
+            db.close();
+            this.dbPromise = null;
+            this.cache.clear();
+          };
+          resolve(db);
+        };
+        request.onerror = () => {
+          this.dbPromise = null;
+          reject(request.error);
+        };
       });
+      return this.dbPromise;
     }
 
     async withStore(mode, fn) {
@@ -104,35 +128,59 @@
         const tx = db.transaction(this.storeName, mode);
         const store = tx.objectStore(this.storeName);
         const result = fn(store);
-        tx.oncomplete = () => {
-          db.close();
-          resolve(result);
-        };
-        tx.onerror = () => {
-          db.close();
-          reject(tx.error);
-        };
+        tx.oncomplete = () => resolve(result);
+        tx.onerror = () => reject(tx.error);
       });
     }
 
     async get(id) {
+      if (this.cache.has(id)) return this.cache.get(id);
+      const records = await this.getMany([id]);
+      return records.get(id) || null;
+    }
+
+    async getMany(ids) {
+      const records = new Map();
+      const missing = [];
+
+      for (const id of ids) {
+        if (!id) continue;
+        if (this.cache.has(id)) records.set(id, this.cache.get(id));
+        else missing.push(id);
+      }
+
+      if (!missing.length) return records;
+
       const db = await this.open();
-      return new Promise((resolve, reject) => {
+      await new Promise((resolve, reject) => {
         const tx = db.transaction(this.storeName, 'readonly');
-        const request = tx.objectStore(this.storeName).get(id);
-        request.onsuccess = () => resolve(request.result || null);
-        request.onerror = () => reject(request.error);
-        tx.oncomplete = () => db.close();
+        const objectStore = tx.objectStore(this.storeName);
+
+        for (const id of missing) {
+          const request = objectStore.get(id);
+          request.onsuccess = () => {
+            const record = request.result || null;
+            this.cache.set(id, record);
+            if (record) records.set(id, record);
+          };
+        }
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
       });
+
+      return records;
     }
 
     put(record) {
       if (!record?.id) return Promise.resolve();
+      this.cache.set(record.id, record);
       return this.withStore('readwrite', (store) => store.put(record));
     }
 
     delete(id) {
       if (!id) return Promise.resolve();
+      this.cache.delete(id);
       return this.withStore('readwrite', (store) => store.delete(id));
     }
   }
@@ -204,29 +252,48 @@
     return 'value' in prompt ? prompt.value : prompt.innerText || prompt.textContent || '';
   };
 
+  let sensitiveRulesSource = null;
+  let sensitiveRules = [];
+
+  const compileSensitiveRules = (value = getValue('k_datasecblocklist', defaultSensitiveRules)) => {
+    const source = String(value || '');
+    if (source === sensitiveRulesSource) return sensitiveRules;
+
+    sensitiveRulesSource = source;
+    sensitiveRules = source
+      .split(/\r?\n/)
+      .map((rule) => rule.trim())
+      .filter(Boolean)
+      .map((ruleText) => {
+        try {
+          return new RegExp(ruleText, 'g');
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    return sensitiveRules;
+  };
+
   const sanitizeText = (text) => {
     let output = String(text || '');
     const matches = [];
-    const rules = String(getValue('k_datasecblocklist', defaultSensitiveRules) || '')
-      .split(/\r?\n/)
-      .map((rule) => rule.trim())
-      .filter(Boolean);
 
-    for (const ruleText of rules) {
-      try {
-        const rule = new RegExp(ruleText, 'g');
-        const found = output.match(rule) || [];
-        for (const item of found) {
-          if (!matches.includes(item)) matches.push(item);
-        }
-        output = output.replace(rule, '');
-      } catch {
-        // 忽略无效规则，避免输入过程被打断。
+    for (const rule of compileSensitiveRules()) {
+      rule.lastIndex = 0;
+      const found = output.match(rule) || [];
+      for (const item of found) {
+        if (!matches.includes(item)) matches.push(item);
       }
+      rule.lastIndex = 0;
+      output = output.replace(rule, '');
     }
 
     return { text: output, matches };
   };
+
+  let composingPrompt = false;
 
   const bindSensitiveScanner = () => {
     const prompt = $(promptSelector);
@@ -234,14 +301,23 @@
 
     prompt.dataset.kcgSensitiveBound = 'true';
     const scan = () => {
+      if (composingPrompt) return;
       const result = sanitizeText(getPromptText(prompt));
       if (!result.matches.length) return;
       setPromptText(result.text);
       toast(`已移除 ${result.matches.length} 条敏感内容`);
     };
+    const scanSoon = debounce(scan, 120);
 
-    prompt.addEventListener('input', scan);
+    prompt.addEventListener('input', scanSoon);
     prompt.addEventListener('paste', () => setTimeout(scan, 0));
+    prompt.addEventListener('compositionstart', () => {
+      composingPrompt = true;
+    });
+    prompt.addEventListener('compositionend', () => {
+      composingPrompt = false;
+      scanSoon();
+    });
   };
 
   const showDialog = ({ title, body, inputType, value, onSave }) => {
@@ -390,18 +466,21 @@
   const closePanel = () => $('#kcg-panel')?.classList.add('kcg-hidden');
 
   const mountButton = () => {
-    if ($('#kcg-entry')) return;
+    let button = $('#kcg-entry');
 
-    const button = document.createElement('button');
-    button.id = 'kcg-entry';
-    button.type = 'button';
-    button.textContent = '增强';
-    button.addEventListener('click', openPanel);
+    if (!button) {
+      button = document.createElement('button');
+      button.id = 'kcg-entry';
+      button.type = 'button';
+      button.textContent = '增强';
+      button.addEventListener('click', openPanel);
+    }
 
     const sidebar = $(sidebarSelector);
     if (sidebar) {
+      button.classList.remove('kcg-floating');
       sidebar.insertBefore(button, sidebar.firstChild);
-    } else {
+    } else if (!button.isConnected) {
       button.classList.add('kcg-floating');
       document.body.appendChild(button);
     }
@@ -424,10 +503,20 @@
     keepTimer = setInterval(keepSession, getKeepInterval() * 1000);
   };
 
-  const clickContinue = () => {
+  const isElement = (node) => node?.nodeType === 1;
+
+  const forAddedElements = (nodes, selector, callback) => {
+    for (const node of nodes) {
+      if (!isElement(node)) continue;
+      if (node.matches?.(selector)) callback(node);
+      node.querySelectorAll?.(selector).forEach(callback);
+    }
+  };
+
+  const clickContinue = (root = document) => {
     if (!getValue('k_speakcompletely', false)) return;
 
-    const buttons = $$('button');
+    const buttons = root.matches?.('button') ? [root] : $$('button', root);
     const target = buttons.find((button) =>
       /继续生成|Continue generating|Continue/i.test(button.innerText || button.ariaLabel || '')
     );
@@ -437,29 +526,31 @@
     }
   };
 
+  const addReuseButton = (message) => {
+    if ($('.kcg-reuse', message)) return;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'kcg-reuse';
+    button.textContent = '复用';
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const content = $('.whitespace-pre-wrap', message) || message;
+      setPromptText((content.innerText || content.textContent || '').trim());
+    });
+
+    message.style.position = 'relative';
+    message.appendChild(button);
+  };
+
   const applyReuseButtons = () => {
     if (!getValue('k_clonechat', false)) {
       $$('.kcg-reuse').forEach((node) => node.remove());
       return;
     }
 
-    $$('main div[data-message-author-role="user"]').forEach((message) => {
-      if ($('.kcg-reuse', message)) return;
-
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'kcg-reuse';
-      button.textContent = '复用';
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const content = $('.whitespace-pre-wrap', message) || message;
-        setPromptText((content.innerText || content.textContent || '').trim());
-      });
-
-      message.style.position = 'relative';
-      message.appendChild(button);
-    });
+    $$('main div[data-message-author-role="user"]').forEach(addReuseButton);
   };
 
   const formatHistoryTime = (value) => {
@@ -524,24 +615,37 @@
     return match?.[1] || '';
   };
 
+  const sidebarLinkState = new WeakMap();
+
   const decorateSidebar = debounce(async () => {
     if (!getValue('k_everchanging', false)) {
       $$('.kcg-history-extra').forEach((node) => node.remove());
       return;
     }
 
-    for (const link of $$(`${sidebarSelector} a[href*="/c/"]`)) {
+    const links = $$(`${sidebarSelector} a[href*="/c/"]`);
+    const linkEntries = [];
+    const ids = [];
+
+    for (const link of links) {
       const match = link.href.match(/\/c\/([^/?#]+)/);
       const id = match?.[1];
       if (!id) continue;
+      linkEntries.push([link, id]);
+      ids.push(id);
+    }
 
-      const record = await store.get(id);
+    const records = await store.getMany(ids);
+
+    for (const [link, id] of linkEntries) {
+      const record = records.get(id);
       if (!record) continue;
 
       const text = [formatHistoryTime(record.update_time), record.last || record.model]
         .filter(Boolean)
         .join(' · ');
       if (!text) continue;
+      if (sidebarLinkState.get(link) === text) continue;
 
       let extra = $('.kcg-history-extra', link);
       if (!extra) {
@@ -550,37 +654,67 @@
         link.appendChild(extra);
       }
       extra.textContent = text;
+      sidebarLinkState.set(link, text);
     }
   }, 180);
 
-  const updateCurrentConversation = debounce(async () => {
+  let lastConversationFingerprint = '';
+
+  const findAssistantMessage = (candidate) =>
+    candidate?.closest?.('[data-message-author-role="assistant"]') ||
+    (candidate?.matches?.('[data-message-author-role="assistant"]') ? candidate : null) ||
+    $$('main [data-message-author-role="assistant"]').at(-1);
+
+  const updateCurrentConversation = debounce(async (candidate) => {
     if (!getValue('k_everchanging', false)) return;
 
     const id = conversationIdFromPage();
     if (!id) return;
 
-    const assistants = $$('main [data-message-author-role="assistant"]');
-    const last = assistants.at(-1);
+    const last = findAssistantMessage(candidate);
     if (!last) return;
+
+    const summary = (last.innerText || last.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 120);
+    const fingerprint = `${id}:${summary}`;
+    if (!summary || fingerprint === lastConversationFingerprint) return;
+    lastConversationFingerprint = fingerprint;
 
     const old = (await store.get(id)) || {};
     await store.put({
       id,
       title: old.title || document.title.replace(/^ChatGPT\s*[-–]\s*/, ''),
       update_time: new Date(),
-      last: (last.innerText || last.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120),
+      last: summary,
       model: old.model || ''
     });
     decorateSidebar();
   }, 800);
 
+  const conversationListPattern = /\/backend-api\/conversations\?.*offset=/;
+  const conversationDetailPattern = /\/backend-api\/conversation\/[^/?#]+/;
+  const conversationFallbackPattern = /\/backend-api\/f\/conversation/;
+
+  const shouldHandleConversationResponse = (url, method) => {
+    if (!getValue('k_everchanging', false)) return false;
+
+    const urlText = String(url || '');
+    return (
+      conversationListPattern.test(urlText) ||
+      conversationDetailPattern.test(urlText) ||
+      (method === 'POST' && conversationFallbackPattern.test(urlText))
+    );
+  };
+
   const handleConversationResponse = (url, method, response) => {
     if (!getValue('k_everchanging', false)) return;
 
     const urlText = String(url || '');
-    const cloned = response.clone();
 
-    if (/\/backend-api\/conversations\?.*offset=/.test(urlText)) {
+    if (conversationListPattern.test(urlText)) {
+      const cloned = response.clone();
       cloned
         .json()
         .then(async (data) => {
@@ -602,7 +736,8 @@
       return;
     }
 
-    if (/\/backend-api\/conversation\/[^/?#]+/.test(urlText)) {
+    if (conversationDetailPattern.test(urlText)) {
+      const cloned = response.clone();
       cloned
         .json()
         .then(async (data) => {
@@ -629,7 +764,7 @@
       return;
     }
 
-    if (/\/backend-api\/f\/conversation/.test(urlText) && method === 'POST') {
+    if (conversationFallbackPattern.test(urlText) && method === 'POST') {
       setTimeout(updateCurrentConversation, 2500);
     }
   };
@@ -648,7 +783,9 @@
         }
 
         return rawFetch(...args).then((response) => {
-          handleConversationResponse(url, method, response);
+          if (shouldHandleConversationResponse(url, method)) {
+            handleConversationResponse(url, method, response);
+          }
           return response;
         });
       };
@@ -705,24 +842,146 @@
 
     $$('script').forEach(block);
 
-    if (trackingObserver || !document.documentElement) return;
+    if (trackingObserver) return;
+    const roots = [document.head, document.body].filter(Boolean);
+    if (!roots.length) return;
+
     trackingObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node.nodeType !== 1) continue;
-          if (node.tagName === 'SCRIPT') block(node);
-          node.querySelectorAll?.('script').forEach(block);
+          if (node.tagName === 'SCRIPT') {
+            block(node);
+            continue;
+          }
+          if (mutation.target === document.head || node.tagName === 'HEAD') {
+            node.querySelectorAll?.('script').forEach(block);
+          }
         }
       }
     });
-    trackingObserver.observe(document.documentElement, { childList: true, subtree: true });
+    for (const root of roots) {
+      trackingObserver.observe(root, {
+        childList: true,
+        subtree: root === document.head
+      });
+    }
+  };
+
+  const managedObservers = new Map();
+
+  const stopManagedObserver = (key) => {
+    managedObservers.get(key)?.observer.disconnect();
+    managedObservers.delete(key);
+  };
+
+  const observeManaged = (key, root, callback, options = { childList: true, subtree: true }) => {
+    if (!root) {
+      stopManagedObserver(key);
+      return false;
+    }
+
+    const current = managedObservers.get(key);
+    if (current?.root === root) return false;
+
+    stopManagedObserver(key);
+    const observer = new MutationObserver(callback);
+    observer.observe(root, options);
+    managedObservers.set(key, { root, observer });
+    return true;
+  };
+
+  const setContinueObserver = (enabled) => {
+    if (!enabled) {
+      stopManagedObserver('continue');
+      return;
+    }
+
+    const root = $('main') || document.body;
+    if (
+      observeManaged('continue', root, (mutations) => {
+        for (const mutation of mutations) {
+          forAddedElements(mutation.addedNodes, 'button', clickContinue);
+        }
+      })
+    ) {
+      clickContinue(root);
+    }
+  };
+
+  const setReuseObserver = (enabled) => {
+    if (!enabled) {
+      stopManagedObserver('reuse');
+      $$('.kcg-reuse').forEach((node) => node.remove());
+      return;
+    }
+
+    if (
+      observeManaged('reuse', $('main'), (mutations) => {
+        for (const mutation of mutations) {
+          forAddedElements(
+            mutation.addedNodes,
+            'div[data-message-author-role="user"]',
+            addReuseButton
+          );
+        }
+      })
+    ) {
+      applyReuseButtons();
+    }
+  };
+
+  const setHistoryObservers = (enabled) => {
+    if (!enabled) {
+      stopManagedObserver('history-sidebar');
+      stopManagedObserver('history-main');
+      $$('.kcg-history-extra').forEach((node) => node.remove());
+      return;
+    }
+
+    if (observeManaged('history-sidebar', $(sidebarSelector), decorateSidebar)) {
+      decorateSidebar();
+    }
+
+    if (
+      observeManaged(
+        'history-main',
+        $('main'),
+        (mutations) => {
+          let candidate = null;
+          for (const mutation of mutations) {
+            const target = isElement(mutation.target)
+              ? mutation.target.closest?.('[data-message-author-role="assistant"]')
+              : mutation.target.parentElement?.closest?.('[data-message-author-role="assistant"]');
+            if (target) candidate = target;
+            forAddedElements(
+              mutation.addedNodes,
+              '[data-message-author-role="assistant"]',
+              (node) => {
+                candidate = node;
+              }
+            );
+          }
+          if (candidate) updateCurrentConversation(candidate);
+        },
+        { childList: true, subtree: true, characterData: true }
+      )
+    ) {
+      updateCurrentConversation();
+    }
+  };
+  const syncFeatureObservers = () => {
+    setContinueObserver(getValue('k_speakcompletely', false) === true);
+    setReuseObserver(getValue('k_clonechat', false) === true);
+    setHistoryObservers(getValue('k_everchanging', false) === true);
   };
 
   const applyFeature = (id, enabled) => {
     if (id === 'wide') document.body.classList.toggle('kcg-wide', enabled);
     if (id === 'clean') document.body.classList.toggle('kcg-clean', enabled);
-    if (id === 'reuse') applyReuseButtons();
-    if (id === 'history') decorateSidebar();
+    if (id === 'continue') setContinueObserver(enabled);
+    if (id === 'reuse') setReuseObserver(enabled);
+    if (id === 'history') setHistoryObservers(enabled);
     if (id === 'tracking') setTrackingScriptBlocker(enabled);
   };
 
@@ -962,9 +1221,22 @@
     if (style) style.id = 'kcg-style';
   };
 
+  const domBindingSelector = `${sidebarSelector}, ${promptSelector}, main, form.w-full`;
+
+  const touchesDomBindings = (nodes) => {
+    for (const node of nodes) {
+      if (!isElement(node)) continue;
+      if (node.matches?.(domBindingSelector) || node.querySelector?.(domBindingSelector)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const boot = () => {
     if (!document.body) return;
 
+    compileSensitiveRules();
     addStyle();
     mountButton();
     createPanel();
@@ -973,20 +1245,20 @@
     applySavedOptions();
     restartKeepAlive();
 
-    const observe = debounce(() => {
+    const syncDomBindings = debounce(() => {
       mountButton();
       bindSensitiveScanner();
-      clickContinue();
-      applyReuseButtons();
-      updateCurrentConversation();
-      decorateSidebar();
+      syncFeatureObservers();
     }, 120);
 
-    new MutationObserver(observe).observe(document.body, { childList: true, subtree: true });
-    setInterval(() => {
-      clickContinue();
-      bindSensitiveScanner();
-    }, 1000);
+    observeManaged('dom-discovery', document.body, (mutations) => {
+      for (const mutation of mutations) {
+        if (touchesDomBindings(mutation.addedNodes) || touchesDomBindings(mutation.removedNodes)) {
+          syncDomBindings();
+          return;
+        }
+      }
+    });
   };
 
   if (document.readyState === 'loading') {
