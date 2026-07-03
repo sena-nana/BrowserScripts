@@ -6,9 +6,10 @@ This repository keeps each userscript in its own directory, shares common helper
 
 ## Scripts
 
-| ID        | Target                  | Output                 |
-| --------- | ----------------------- | ---------------------- |
-| `example` | `https://example.com/*` | `dist/example.user.js` |
+| ID                           | Target                  | Output                                    |
+| ---------------------------- | ----------------------- | ----------------------------------------- |
+| `chatgpt-practical-enhancer` | `https://chatgpt.com/*` | `dist/chatgpt-practical-enhancer.user.js` |
+| `example`                    | `https://example.com/*` | `dist/example.user.js`                    |
 
 ## Commands
 
