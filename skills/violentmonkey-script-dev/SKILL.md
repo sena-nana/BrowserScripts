@@ -25,28 +25,28 @@ If local docs are incomplete, check the remote docs listed in `docs/remote-docs.
 Create a script:
 
 ```bash
-pnpm new <script-id>
+yarn new <script-id>
 ```
 
 Build:
 
 ```bash
-pnpm build <script-id>
+yarn build <script-id>
 ```
 
 Develop locally:
 
 ```bash
-pnpm dev <script-id>
+yarn dev <script-id>
 ```
 
 Verify:
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm build
-pnpm check:meta
+yarn typecheck
+yarn lint
+yarn build
+yarn check:meta
 ```
 
 ## Metadata Checklist

@@ -3,7 +3,7 @@
 Copy this template with:
 
 ```bash
-pnpm new my-script
+yarn new my-script
 ```
 
 Then update `meta.ts`, `src/main.ts`, and this README for the target site.

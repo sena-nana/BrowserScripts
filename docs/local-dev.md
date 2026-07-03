@@ -3,14 +3,14 @@
 ## Install
 
 ```bash
-pnpm install
+yarn install
 ```
 
 ## Build
 
 ```bash
-pnpm build
-pnpm build example
+yarn build
+yarn build example
 ```
 
 Build output goes to `dist/<script-id>.user.js` and `dist/<script-id>.user.js.map`.
@@ -18,7 +18,7 @@ Build output goes to `dist/<script-id>.user.js` and `dist/<script-id>.user.js.ma
 ## Develop
 
 ```bash
-pnpm dev example
+yarn dev example
 ```
 
 The dev server watches the selected userscript and shared packages, rebuilds on change, serves `dist/`, and prints a localhost install URL.
@@ -28,7 +28,7 @@ Install the localhost `.user.js` URL in Violentmonkey. This avoids broad local f
 ## Create a Script
 
 ```bash
-pnpm new my-script
+yarn new my-script
 ```
 
 Then update:
@@ -41,8 +41,8 @@ Then update:
 ## Verify
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm build
-pnpm check:meta
+yarn typecheck
+yarn lint
+yarn build
+yarn check:meta
 ```

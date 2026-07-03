@@ -12,7 +12,7 @@ When installed on `https://example.com/`, the script adds a small fixed badge sh
 
 ## Verification
 
-1. Run `pnpm dev example`.
+1. Run `yarn dev example`.
 2. Install the printed localhost URL in Violentmonkey.
 3. Open `https://example.com/`.
 4. Confirm a `VM Example active` badge appears in the lower-right corner.

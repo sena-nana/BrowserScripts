@@ -13,23 +13,23 @@ This repository keeps each userscript in its own directory, shares common helper
 ## Commands
 
 ```bash
-pnpm install
-pnpm build
-pnpm dev example
-pnpm check:meta
-pnpm typecheck
-pnpm lint
-pnpm format:check
-pnpm new my-script
+yarn install
+yarn build
+yarn dev example
+yarn check:meta
+yarn typecheck
+yarn lint
+yarn format:check
+yarn new my-script
 ```
 
-`pnpm dev <script-id>` watches the script source, rebuilds `dist/<script-id>.user.js`, serves `dist/` over localhost, and prints the install URL for Violentmonkey.
+`yarn dev <script-id>` watches the script source, rebuilds `dist/<script-id>.user.js`, serves `dist/` over localhost, and prints the install URL for Violentmonkey.
 
 ## Layout
 
 ```txt
 userscripts/<id>/        one userscript project
-userscripts/_template/   starter copied by pnpm new
+userscripts/_template/   starter copied by yarn new
 packages/vm-kit/         shared runtime helpers
 packages/build-kit/      build and metadata helpers
 dist/                    generated installable userscripts
@@ -40,7 +40,7 @@ tools/                   repository commands
 
 ## Local Install
 
-1. Run `pnpm dev example`.
+1. Run `yarn dev example`.
 2. Open the printed `http://127.0.0.1:<port>/example.user.js` URL in a browser with Violentmonkey.
 3. Install or update the script.
 4. Visit `https://example.com/`.
