@@ -1,1 +1,0 @@
-import './main-legacy.js';

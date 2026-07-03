@@ -57,12 +57,30 @@ export async function loadUserscriptMeta(
   return module.default;
 }
 
+async function findEntryPoint(scriptDir: string): Promise<string> {
+  for (const fileName of ['main.ts', 'main.js']) {
+    const entryPoint = path.join(scriptDir, 'src', fileName);
+
+    try {
+      const entryStat = await stat(entryPoint);
+
+      if (entryStat.isFile()) {
+        return entryPoint;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error(`${scriptDir} must contain src/main.ts or src/main.js`);
+}
+
 export async function buildUserscript(
   options: BuildUserscriptOptions
 ): Promise<BuildUserscriptResult> {
   const repoRoot = options.repoRoot ?? process.cwd();
   const scriptDir = path.join(repoRoot, 'userscripts', options.scriptId);
-  const entryPoint = path.join(scriptDir, 'src', 'main.ts');
+  const entryPoint = await findEntryPoint(scriptDir);
   const distDir = path.join(repoRoot, 'dist');
   const outfile = path.join(distDir, `${options.scriptId}.user.js`);
   const meta = await loadUserscriptMeta(repoRoot, options.scriptId);

@@ -18,7 +18,7 @@
 // ==/UserScript==
 
 (() => {
-  // userscripts/chatgpt-practical-enhancer/src/main-legacy.js
+  // userscripts/chatgpt-practical-enhancer/src/main.js
   (() => {
     "use strict";
     const win = typeof unsafeWindow === "undefined" ? window : unsafeWindow;
