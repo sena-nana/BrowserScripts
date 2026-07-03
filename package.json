@@ -1,0 +1,26 @@
+{
+  "name": "browserscripts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "new": "node tools/new-userscript.mjs",
+    "build": "tsx tools/build.mjs",
+    "dev": "tsx tools/dev-server.mjs",
+    "check:meta": "tsx tools/check-meta.mjs",
+    "typecheck": "tsc -p tsconfig.base.json --noEmit",
+    "lint": "eslint .",
+    "format:check": "prettier . --check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.10.1",
+    "@violentmonkey/types": "^0.2.0",
+    "eslint": "^9.39.1",
+    "prettier": "^3.7.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.0"
+  }
+}
