@@ -24,5 +24,33 @@ export default [
         }
       ]
     }
+  },
+  {
+    files: ['userscripts/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        clearInterval: 'readonly',
+        clearTimeout: 'readonly',
+        document: 'readonly',
+        GM_addStyle: 'readonly',
+        GM_getValue: 'readonly',
+        GM_setValue: 'readonly',
+        GM_xmlhttpRequest: 'readonly',
+        indexedDB: 'readonly',
+        InputEvent: 'readonly',
+        location: 'readonly',
+        MutationObserver: 'readonly',
+        navigator: 'readonly',
+        Request: 'readonly',
+        Response: 'readonly',
+        setInterval: 'readonly',
+        setTimeout: 'readonly',
+        unsafeWindow: 'readonly',
+        URL: 'readonly',
+        window: 'readonly'
+      }
+    }
   }
 ];
