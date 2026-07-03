@@ -7,7 +7,7 @@ import { buildUserscript } from '../packages/build-kit/src/build-userscript.ts';
 const scriptId = process.argv[2];
 
 if (!scriptId) {
-  throw new Error('Usage: pnpm dev <script-id>');
+  throw new Error('Usage: yarn dev <script-id>');
 }
 
 const repoRoot = process.cwd();

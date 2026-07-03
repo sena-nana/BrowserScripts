@@ -4,7 +4,7 @@ import path from 'node:path';
 const scriptId = process.argv[2];
 
 if (!scriptId || !/^[a-z0-9][a-z0-9-]*$/.test(scriptId)) {
-  throw new Error('Usage: pnpm new <script-id>. Use lowercase letters, numbers, and hyphens.');
+  throw new Error('Usage: yarn new <script-id>. Use lowercase letters, numbers, and hyphens.');
 }
 
 const repoRoot = process.cwd();

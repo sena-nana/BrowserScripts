@@ -24,4 +24,4 @@ Rules:
 - Add `@noframes` unless iframe execution is required.
 - Use `@inject-into page` only for page global access.
 
-This repository stores metadata in `userscripts/<id>/meta.ts` and emits the block during `pnpm build`.
+This repository stores metadata in `userscripts/<id>/meta.ts` and emits the block during `yarn build`.

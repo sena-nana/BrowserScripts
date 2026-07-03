@@ -114,7 +114,7 @@ Rules:
 
 When creating a new userscript:
 
-1. Run `pnpm new <script-id>`.
+1. Run `yarn new <script-id>`.
 2. Update `userscripts/<script-id>/meta.ts`.
 3. Add a short README for the script.
 4. Add target-site notes under `docs/targets/` if the site is new.
@@ -127,10 +127,10 @@ When creating a new userscript:
 Before finishing a code change, run:
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm build
-pnpm check:meta
+yarn typecheck
+yarn lint
+yarn build
+yarn check:meta
 ```
 
 If a smoke test exists for the changed script, run it. If no smoke test exists, provide a manual verification checklist in the final response or PR notes.
