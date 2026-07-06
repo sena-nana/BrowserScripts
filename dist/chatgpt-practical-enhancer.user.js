@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ChatGPT 实用增强
 // @namespace   https://github.com/wangjunxue/BrowserScripts
-// @version     35.0.0-clean
+// @version     35.0.1-clean
 // @description 保持会话、阻止跟踪、敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用我的消息、侧边栏摘要。
 // @match       https://chatgpt.com/*
 // @match       https://chat.openai.com/*
@@ -48,8 +48,8 @@
       {
         id: "keep",
         type: "action",
-        title: "\u4FDD\u6301\u4F1A\u8BDD\u95F4\u9694",
-        desc: "\u5B9A\u65F6\u8BF7\u6C42\u4F1A\u8BDD\u72B6\u6001\uFF0C\u964D\u4F4E\u9875\u9762\u95F2\u7F6E\u5931\u6548\u6982\u7387"
+        title: "\u4FDD\u6301\u4F1A\u8BDD",
+        desc: "\u542F\u7528\u540E\u5B9A\u65F6\u68C0\u67E5\u4F1A\u8BDD\u72B6\u6001"
       },
       {
         id: "data",
@@ -292,14 +292,14 @@
         scanSoon();
       });
     };
-    const showDialog = ({ title, body, inputType, value, onSave }) => {
+    const showDialog = ({ title, body, inputType, value, content, focusSelector, onSave }) => {
       const overlay = document.createElement("div");
       overlay.className = "kcg-dialog";
       overlay.innerHTML = `
             <div class="kcg-dialog-panel" role="dialog" aria-modal="true">
                 <div class="kcg-dialog-title">${html(title)}</div>
                 ${body ? `<div class="kcg-dialog-body">${html(body)}</div>` : ""}
-                ${inputType === "textarea" ? `<textarea class="kcg-dialog-input" rows="8">${html(value || "")}</textarea>` : `<input class="kcg-dialog-input" value="${html(value || "")}">`}
+                ${content || (inputType === "textarea" ? `<textarea class="kcg-dialog-input" rows="8">${html(value || "")}</textarea>` : `<input class="kcg-dialog-input" value="${html(value || "")}">`)}
                 <div class="kcg-dialog-actions">
                     <button type="button" data-action="cancel">\u53D6\u6D88</button>
                     <button type="button" data-action="save">\u4FDD\u5B58</button>
@@ -318,13 +318,43 @@
       overlay.addEventListener("click", (event) => {
         if (event.target === overlay || event.target.dataset.action === "cancel") close();
         if (event.target.dataset.action === "save") {
-          onSave?.($(".kcg-dialog-input", overlay).value);
+          onSave?.($(".kcg-dialog-input", overlay)?.value, overlay);
           close();
         }
       });
       document.addEventListener("keydown", onEsc);
       document.body.appendChild(overlay);
-      $(".kcg-dialog-input", overlay)?.focus();
+      $(focusSelector || ".kcg-dialog-input", overlay)?.focus();
+    };
+    const showKeepAliveDialog = () => {
+      showDialog({
+        title: "\u4FDD\u6301\u4F1A\u8BDD",
+        content: `
+                <label class="kcg-check">
+                    <input class="kcg-keep-enabled" type="checkbox" ${isKeepAliveEnabled() ? "checked" : ""}>
+                    <span>\u542F\u7528\u4FDD\u6301\u4F1A\u8BDD</span>
+                </label>
+                <label class="kcg-field">
+                    <span>\u95F4\u9694\u79D2\u6570</span>
+                    <input class="kcg-dialog-input kcg-keep-interval" value="${html(String(getKeepInterval()))}" inputmode="numeric">
+                </label>
+            `,
+        focusSelector: ".kcg-keep-interval",
+        onSave: (_, overlay) => {
+          const nextEnabled = $(".kcg-keep-enabled", overlay)?.checked === true;
+          const seconds = Math.max(10, parseInt($(".kcg-keep-interval", overlay)?.value, 10) || 50);
+          setValue("k_keepalive", nextEnabled);
+          setValue("k_interval", seconds);
+          restartKeepAlive();
+          syncPanelState();
+          toast(nextEnabled ? `\u4FDD\u6301\u4F1A\u8BDD\u5DF2\u5F00\u542F\uFF0C\u6BCF ${seconds} \u79D2\u68C0\u67E5\u4E00\u6B21` : "\u4FDD\u6301\u4F1A\u8BDD\u5DF2\u5173\u95ED");
+        }
+      });
+    };
+    const getFeatureDesc = (item) => {
+      if (item.id !== "keep") return item.desc;
+      if (!isKeepAliveEnabled()) return `\u5DF2\u5173\u95ED\uFF0C\u95F4\u9694\u4FDD\u7559\u4E3A ${getKeepInterval()} \u79D2`;
+      return `\u5DF2\u5F00\u542F\uFF0C\u6BCF ${getKeepInterval()} \u79D2\u68C0\u67E5\u4E00\u6B21`;
     };
     const createPanel = () => {
       if ($("#kcg-panel")) return;
@@ -349,7 +379,7 @@
         row.innerHTML = `
                 <span>
                     <strong>${html(item.title)}</strong>
-                    <small>${html(item.desc)}</small>
+                    <small>${html(getFeatureDesc(item))}</small>
                 </span>
                 ${item.type === "toggle" ? '<i class="kcg-switch"></i>' : "<em>\u8BBE\u7F6E</em>"}
             `;
@@ -366,18 +396,7 @@
         if (!item) return;
         if (item.id === "keep") {
           closePanel();
-          showDialog({
-            title: "\u4FDD\u6301\u4F1A\u8BDD\u95F4\u9694",
-            body: "\u5355\u4F4D\uFF1A\u79D2\u3002\u5EFA\u8BAE\u4E0D\u8981\u4F4E\u4E8E 50\u3002",
-            inputType: "input",
-            value: String(getKeepInterval()),
-            onSave: (value) => {
-              const seconds = Math.max(10, parseInt(value, 10) || 50);
-              setValue("k_interval", seconds);
-              restartKeepAlive();
-              toast(`\u4FDD\u6301\u4F1A\u8BDD\u95F4\u9694\u5DF2\u8BBE\u4E3A ${seconds} \u79D2`);
-            }
-          });
+          showKeepAliveDialog();
           return;
         }
         if (item.id === "data") {
@@ -404,9 +423,10 @@
     };
     const syncPanelState = () => {
       for (const item of features) {
-        if (item.type !== "toggle") continue;
         const row = $(`#kcg-panel [data-feature-id="${item.id}"]`);
-        row?.classList.toggle("kcg-on", getValue(item.key, false) === true);
+        if (!row) continue;
+        $("small", row)?.replaceChildren(document.createTextNode(getFeatureDesc(item)));
+        if (item.type === "toggle") row?.classList.toggle("kcg-on", getValue(item.key, false) === true);
       }
     };
     const openPanel = () => {
@@ -442,9 +462,12 @@
       });
     };
     const getKeepInterval = () => Math.max(10, parseInt(getValue("k_interval", 50), 10) || 50);
+    const isKeepAliveEnabled = () => getValue("k_keepalive", false) === true;
     let keepTimer = null;
     const restartKeepAlive = () => {
       clearInterval(keepTimer);
+      keepTimer = null;
+      if (!isKeepAliveEnabled()) return;
       keepTimer = setInterval(keepSession, getKeepInterval() * 1e3);
     };
     const isElement = (node) => node?.nodeType === 1;
@@ -968,6 +991,26 @@
                 margin-bottom: .75rem;
                 color: var(--text-secondary, #666);
                 font-size: .86rem;
+            }
+            .kcg-check, .kcg-field {
+                display: grid;
+                gap: .4rem;
+                margin-bottom: .75rem;
+                color: inherit;
+                font-size: .9rem;
+            }
+            .kcg-check {
+                grid-template-columns: auto 1fr;
+                align-items: center;
+            }
+            .kcg-check input {
+                width: 1rem;
+                height: 1rem;
+                margin: 0;
+            }
+            .kcg-field span {
+                color: var(--text-secondary, #666);
+                font-size: .8rem;
             }
             .kcg-dialog-input {
                 width: 100%;

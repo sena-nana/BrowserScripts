@@ -30,15 +30,18 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 
 - `GM_addStyle` injects the feature panel and layout styles.
 - `GM_getValue` and `GM_setValue` store feature toggles and sensitive-content rules locally.
-- `GM_xmlhttpRequest` requests `/api/auth/session` on the current ChatGPT host for keep-alive.
+- `GM_xmlhttpRequest` requests `/api/auth/session` on the current ChatGPT host after keep-alive is enabled.
 - `unsafeWindow` and `@inject-into page` allow fetch, XHR, and sendBeacon interception in the page context.
 
 ## Debug Steps
 
 1. Confirm the current URL matches `https://chatgpt.com/*` or `https://chat.openai.com/*`.
 2. Confirm the `增强` entry is mounted in the sidebar or as a lower-left floating button.
-3. Toggle one option, refresh, and confirm the option state persists.
-4. Check DevTools for runtime errors if ChatGPT changes selectors.
+3. Confirm keep-alive is disabled by default; enable it and verify `/api/auth/session` polling starts.
+4. Change the keep-alive interval, refresh, and confirm the interval persists.
+5. Disable keep-alive and confirm session polling stops.
+6. Toggle one option, refresh, and confirm the option state persists.
+7. Check DevTools for runtime errors if ChatGPT changes selectors.
 
 ## Known Breakage Points
 
