@@ -1,6 +1,6 @@
 # ChatGPT 实用增强
 
-ChatGPT / chat.openai.com 的实用增强脚本。功能包括可选保持会话、阻止常见跟踪请求、发送前敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用自己的消息，以及在侧边栏显示会话时间和摘要。
+ChatGPT / chat.openai.com 的实用增强脚本。功能包括可选保持会话、阻止常见跟踪请求、发送前敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用自己的消息、长对话单轮显示，以及在侧边栏显示会话时间和摘要。
 
 ## Install
 
@@ -28,3 +28,7 @@ Install `dist/chatgpt-practical-enhancer.user.js` in Violentmonkey.
 7. Add a sensitive-content rule, type matching text in the prompt, and confirm it is removed with a toast.
 8. In a conversation, enable message reuse and confirm a `复用` button fills the prompt with your previous message.
 9. Enable side-bar summary, open a conversation, and confirm visited conversations can show time or summary metadata in the sidebar.
+10. Open a long conversation, enable single-turn display, and confirm only one question/answer turn is visible.
+11. Use the previous/next controls and confirm the counter and disabled states are correct.
+12. Send a new message while single-turn display is enabled and confirm the view follows the latest turn.
+13. Disable single-turn display and confirm all conversation messages are visible again.

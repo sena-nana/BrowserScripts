@@ -18,6 +18,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 
 - `main div[data-message-author-role="user"]`
 - `main [data-message-author-role="assistant"]`
+- `main [data-message-author-role]`
 - `a[href*="/c/"]`
 
 ## Fragile Selectors
@@ -48,7 +49,8 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 
 - ChatGPT DOM class names and prompt/sidebar selectors change often.
 - ChatGPT history response shapes can change, which may affect sidebar summaries.
+- Single-turn display groups messages by `data-message-author-role`; if ChatGPT changes message role attributes, the performance mode needs selector review.
 
 ## Last Verified
 
-2026-07-03
+2026-07-06
