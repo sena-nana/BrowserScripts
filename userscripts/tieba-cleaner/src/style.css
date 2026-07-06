@@ -1,0 +1,33 @@
+.right_section,
+.aside,
+.j_click_stats,
+.app_download_box,
+.tbui_aside_float_bar,
+.celebrity,
+.game_wrapper,
+.spreadad,
+.forum_recommend,
+.p_postlist .tail-info,
+.thread_theme_7,
+.fengchao-wrap,
+.dialogJ,
+.login-dialog,
+.poster_head,
+.pb_footer {
+  display: none !important;
+}
+
+.vm-tieba-thread #content,
+.vm-tieba-thread .wrap1,
+.vm-tieba-thread .pb_content {
+  width: min(980px, calc(100vw - 32px)) !important;
+}
+
+.l_post,
+.d_post_content_main {
+  margin-right: 0 !important;
+}
+
+#vm-tieba-reverse-posts {
+  color: #24292f;
+}

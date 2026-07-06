@@ -1,0 +1,25 @@
+.login-container,
+.login-modal,
+.download-app,
+.launch-app-container,
+.reds-sticky,
+.ad-container,
+.engage-bar-style,
+.bottom-input,
+.mask:has(.login-container),
+.mask:has(.download-app) {
+  display: none !important;
+}
+
+body,
+.note-content,
+.desc,
+.content,
+.comment-item {
+  user-select: text !important;
+}
+
+.note-container,
+.feeds-container {
+  max-width: min(1120px, calc(100vw - 24px)) !important;
+}

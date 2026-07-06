@@ -1,0 +1,18 @@
+.vm-font-rendering-tuner-active body,
+.vm-font-rendering-tuner-active button,
+.vm-font-rendering-tuner-active input,
+.vm-font-rendering-tuner-active textarea,
+.vm-font-rendering-tuner-active select {
+  font-family: var(--vm-font-rendering-family) !important;
+  font-size-adjust: var(--vm-font-rendering-scale);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizelegibility;
+}
+
+.vm-font-rendering-tuner-active pre,
+.vm-font-rendering-tuner-active code,
+.vm-font-rendering-tuner-active kbd,
+.vm-font-rendering-tuner-active samp {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace !important;
+}

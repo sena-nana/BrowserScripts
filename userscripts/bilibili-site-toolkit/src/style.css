@@ -1,0 +1,29 @@
+.ad-report,
+.bili-video-card__info--ad,
+.video-page-game-card-small,
+.pop-live-small-mode,
+.activity-m-v1,
+.right-entry,
+.eva-extension-area,
+.live-card,
+.feed-card:has(.bili-video-card__info--ad) {
+  display: none !important;
+}
+
+.vm-bilibili-video .right-container,
+.vm-bilibili-video .recommend-list-v1 {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.vm-bilibili-dynamic .bili-dyn-list-tabs,
+.vm-bilibili-space .space-right-bottom {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.video-tag-container,
+.tag-panel {
+  max-height: none !important;
+}

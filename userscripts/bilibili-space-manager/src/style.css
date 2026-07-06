@@ -1,0 +1,22 @@
+.vm-bilibili-space-manager {
+  color: #24292f;
+}
+
+.vm-bilibili-space-manager-title {
+  font-weight: 700;
+}
+
+.vm-bilibili-space-manager-summary {
+  color: #57606a;
+}
+
+.vm-bilibili-space-manager-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vm-bilibili-space-manager button,
+.vm-bilibili-space-manager a {
+  color: inherit;
+}

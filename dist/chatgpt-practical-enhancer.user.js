@@ -447,7 +447,8 @@
         const row = $(`#kcg-panel [data-feature-id="${item.id}"]`);
         if (!row) continue;
         $("small", row)?.replaceChildren(document.createTextNode(getFeatureDesc(item)));
-        if (item.type === "toggle") row?.classList.toggle("kcg-on", getValue(item.key, false) === true);
+        if (item.type === "toggle")
+          row?.classList.toggle("kcg-on", getValue(item.key, false) === true);
       }
     };
     const openPanel = () => {
@@ -684,8 +685,22 @@
     };
     const firstValue = (...values) => values.find((value) => value != null && String(value).trim() !== "");
     const pickField = (object, fields) => firstValue(...fields.map((field) => object?.[field]));
-    const textFields = ["text", "value", "content", "parts", "message", "summary", "preview", "snippet"];
-    const conversationIdFields = ["conversation_id", "conversationId", "conversation_uuid", "conversationUuid"];
+    const textFields = [
+      "text",
+      "value",
+      "content",
+      "parts",
+      "message",
+      "summary",
+      "preview",
+      "snippet"
+    ];
+    const conversationIdFields = [
+      "conversation_id",
+      "conversationId",
+      "conversation_uuid",
+      "conversationUuid"
+    ];
     const routeConversationIdFields = conversationIdFields.concat([
       "current_conversation_id",
       "currentConversationId",
@@ -803,7 +818,9 @@
     };
     const readHistoryDate = (payload) => normalizeHistoryDate(pickField(payload, dateFields));
     const messageTime = (message) => normalizeHistoryDate(pickField(message, dateFields))?.getTime() || 0;
-    const messageRole = (message) => String(firstValue(message?.author?.role, pickField(message, ["role"]), message?.sender?.role) || "");
+    const messageRole = (message) => String(
+      firstValue(message?.author?.role, pickField(message, ["role"]), message?.sender?.role) || ""
+    );
     const collectMessages = (payload) => {
       const messages = [];
       if (payload?.current_node && payload?.mapping?.[payload.current_node]?.message) {

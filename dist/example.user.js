@@ -153,7 +153,7 @@
   }
   var stopUrlWatcher = onUrlChange(() => renderBadge());
   if (false) {
-    installDebugBridge({
+    installDebugBridge(scriptId, {
       rerun: renderBadge,
       state: () => ({
         markerExists: Boolean(document.getElementById(markerId)),

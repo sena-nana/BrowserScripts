@@ -8,6 +8,8 @@ Use these notes before reaching for remote documentation.
 - `docs/browser-debug.md`: browser debugging checklist
 - `docs/api/quick-reference.md`: common metadata and GM API choices
 - `docs/remote-docs.md`: official docs index
+- `docs/migration-index.md`: mapping from imported reference scripts to maintained userscripts
+- `docs/migration-gap-audit.md`: necessary-feature audit and intentionally skipped high-risk behavior
 
 ## Local API Notes
 

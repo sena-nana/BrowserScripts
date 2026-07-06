@@ -8,8 +8,21 @@ This repository keeps each userscript in its own directory, shares common helper
 
 | ID                           | Target                  | Output                                    |
 | ---------------------------- | ----------------------- | ----------------------------------------- |
+| `baidu-cleaner`              | `https://*.baidu.com/*` | `dist/baidu-cleaner.user.js`              |
+| `bilibili-live-toolkit`      | Bilibili live rooms     | `dist/bilibili-live-toolkit.user.js`      |
+| `bilibili-site-toolkit`      | Bilibili site pages     | `dist/bilibili-site-toolkit.user.js`      |
+| `bilibili-space-manager`     | Bilibili space pages    | `dist/bilibili-space-manager.user.js`     |
 | `chatgpt-practical-enhancer` | `https://chatgpt.com/*` | `dist/chatgpt-practical-enhancer.user.js` |
+| `csdn-reader-cleaner`        | `https://*.csdn.net/*`  | `dist/csdn-reader-cleaner.user.js`        |
+| `dlsite-voice-links`         | DLsite / ASMR sites     | `dist/dlsite-voice-links.user.js`         |
 | `example`                    | `https://example.com/*` | `dist/example.user.js`                    |
+| `font-rendering-tuner`       | Broad visual styling    | `dist/font-rendering-tuner.user.js`       |
+| `google-play-download-links` | Google Play app pages   | `dist/google-play-download-links.user.js` |
+| `pan-download-helper`        | Cloud-drive hosts       | `dist/pan-download-helper.user.js`        |
+| `pan-link-opener`            | Cloud-drive hosts       | `dist/pan-link-opener.user.js`            |
+| `scrollbar-dark`             | Broad visual styling    | `dist/scrollbar-dark.user.js`             |
+| `tieba-cleaner`              | Tieba pages             | `dist/tieba-cleaner.user.js`              |
+| `xiaohongshu-cleaner`        | Xiaohongshu pages       | `dist/xiaohongshu-cleaner.user.js`        |
 
 ## Commands
 

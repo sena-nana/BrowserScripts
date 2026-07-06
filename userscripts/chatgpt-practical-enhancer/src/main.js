@@ -500,7 +500,8 @@
       const row = $(`#kcg-panel [data-feature-id="${item.id}"]`);
       if (!row) continue;
       $('small', row)?.replaceChildren(document.createTextNode(getFeatureDesc(item)));
-      if (item.type === 'toggle') row?.classList.toggle('kcg-on', getValue(item.key, false) === true);
+      if (item.type === 'toggle')
+        row?.classList.toggle('kcg-on', getValue(item.key, false) === true);
     }
   };
 
@@ -793,8 +794,22 @@
   const firstValue = (...values) =>
     values.find((value) => value != null && String(value).trim() !== '');
   const pickField = (object, fields) => firstValue(...fields.map((field) => object?.[field]));
-  const textFields = ['text', 'value', 'content', 'parts', 'message', 'summary', 'preview', 'snippet'];
-  const conversationIdFields = ['conversation_id', 'conversationId', 'conversation_uuid', 'conversationUuid'];
+  const textFields = [
+    'text',
+    'value',
+    'content',
+    'parts',
+    'message',
+    'summary',
+    'preview',
+    'snippet'
+  ];
+  const conversationIdFields = [
+    'conversation_id',
+    'conversationId',
+    'conversation_uuid',
+    'conversationUuid'
+  ];
   const routeConversationIdFields = conversationIdFields.concat([
     'current_conversation_id',
     'currentConversationId',
@@ -861,11 +876,7 @@
     return flattenText(pickField(value, textFields), seen);
   };
 
-  const cleanPreviewText = (value) =>
-    flattenText(value)
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 120);
+  const cleanPreviewText = (value) => flattenText(value).replace(/\s+/g, ' ').trim().slice(0, 120);
 
   const normalizeHistoryDate = (value) => {
     if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
@@ -907,13 +918,13 @@
     if (!payload || typeof payload !== 'object') return false;
     return Boolean(
       payload.mapping ||
-        payload.current_node ||
-        Array.isArray(payload.messages) ||
-        payload.conversation ||
-        pickField(payload, dateFields) ||
-        pickField(payload, previewFields) ||
-        pickField(payload, modelFields) ||
-        payload.title
+      payload.current_node ||
+      Array.isArray(payload.messages) ||
+      payload.conversation ||
+      pickField(payload, dateFields) ||
+      pickField(payload, previewFields) ||
+      pickField(payload, modelFields) ||
+      payload.title
     );
   };
 
@@ -935,7 +946,9 @@
     const nestedId = normalizeConversationId(payload?.conversation?.id);
     if (nestedId) return nestedId;
 
-    const genericId = allowGenericId ? normalizeConversationId(firstValue(payload?.id, payload?.uuid)) : '';
+    const genericId = allowGenericId
+      ? normalizeConversationId(firstValue(payload?.id, payload?.uuid))
+      : '';
     return genericId || normalizeConversationId(fallbackId);
   };
 
@@ -945,7 +958,9 @@
     normalizeHistoryDate(pickField(message, dateFields))?.getTime() || 0;
 
   const messageRole = (message) =>
-    String(firstValue(message?.author?.role, pickField(message, ['role']), message?.sender?.role) || '');
+    String(
+      firstValue(message?.author?.role, pickField(message, ['role']), message?.sender?.role) || ''
+    );
 
   const collectMessages = (payload) => {
     const messages = [];
@@ -1002,7 +1017,8 @@
         preview?.message
       )
     );
-    const updateTime = readHistoryDate(payload) || (preview ? normalizeHistoryDate(messageTime(preview)) : null);
+    const updateTime =
+      readHistoryDate(payload) || (preview ? normalizeHistoryDate(messageTime(preview)) : null);
 
     if (!updateTime && !last && !payload.title && !preview) return null;
 
@@ -1048,7 +1064,8 @@
       const record = buildConversationRecord(value, {
         fallbackId: scopedFallbackId,
         allowGenericId:
-          hasConversationRecordSignal(value) && (depth === 0 || historyContextPattern.test(contextKey))
+          hasConversationRecordSignal(value) &&
+          (depth === 0 || historyContextPattern.test(contextKey))
       });
       if (
         record &&
@@ -1313,7 +1330,10 @@
   };
 
   const ensureNetworkHooks = () => {
-    if (getValue('k_intercepttracking', false) === true || getValue('k_everchanging', false) === true) {
+    if (
+      getValue('k_intercepttracking', false) === true ||
+      getValue('k_everchanging', false) === true
+    ) {
       hookNetwork();
     }
   };

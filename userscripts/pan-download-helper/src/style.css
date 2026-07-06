@@ -1,0 +1,13 @@
+.vm-pan-download-helper {
+  display: flex;
+  gap: 6px;
+}
+
+.vm-pan-download-helper button {
+  background: #0969da;
+  color: #fff;
+}
+
+.vm-pan-download-helper button:hover {
+  background: #0757b6;
+}

@@ -1,5 +1,4 @@
-import { createLogger, injectStyle, onUrlChange } from '@browserscripts/vm-kit';
-import { installDebugBridge } from './debug.ts';
+import { createLogger, injectStyle, onUrlChange, installDebugBridge } from '@browserscripts/vm-kit';
 import styleText from './style.css';
 
 const scriptId = 'template-userscript';
@@ -13,7 +12,7 @@ function run(): void {
 const stopUrlWatcher = onUrlChange(() => run());
 
 if (__DEV__) {
-  installDebugBridge({
+  installDebugBridge(scriptId, {
     rerun: run,
     state: () => ({
       url: location.href
