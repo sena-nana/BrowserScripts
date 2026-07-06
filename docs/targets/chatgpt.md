@@ -32,6 +32,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 - `GM_getValue` and `GM_setValue` store feature toggles and sensitive-content rules locally.
 - `GM_xmlhttpRequest` requests `/api/auth/session` on the current ChatGPT host after keep-alive is enabled.
 - `unsafeWindow` and `@inject-into page` allow fetch, XHR, and sendBeacon interception in the page context.
+- Sidebar time and summary capture reads same-origin JSON response shapes for conversation metadata instead of relying on fixed backend endpoint paths.
 
 ## Debug Steps
 
@@ -46,7 +47,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 ## Known Breakage Points
 
 - ChatGPT DOM class names and prompt/sidebar selectors change often.
-- Backend conversation endpoints can change shape, which may affect sidebar summaries.
+- ChatGPT history response shapes can change, which may affect sidebar summaries.
 
 ## Last Verified
 
