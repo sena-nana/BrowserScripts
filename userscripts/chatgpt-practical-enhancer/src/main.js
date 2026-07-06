@@ -7,6 +7,8 @@
 
   const sidebarSelector = 'nav.flex:not(#stage-sidebar-tiny-bar)';
   const promptSelector = 'form.w-full #prompt-textarea';
+  const messageRoleSelector = '[data-message-author-role]';
+  const messageSelector = `main ${messageRoleSelector}`;
   const defaultSensitiveRules = [
     '18888888888',
     'https://securiy-domain.com',
@@ -83,6 +85,13 @@
       type: 'toggle',
       title: '侧边栏显示时间和摘要',
       desc: '在历史会话列表显示更新时间和最近回复摘要'
+    },
+    {
+      id: 'turn-reader',
+      key: 'k_turnreader',
+      type: 'toggle',
+      title: '长对话单轮显示',
+      desc: '长对话中只显示当前问答轮，可用上一轮和下一轮切换'
     }
   ];
 
@@ -592,6 +601,181 @@
     }
 
     $$('main div[data-message-author-role="user"]').forEach(addReuseButton);
+  };
+
+  const turnReaderState = {
+    turns: [],
+    index: -1,
+    followLatest: true,
+    route: ''
+  };
+
+  const buildConversationTurns = () => {
+    const turns = [];
+    let current = null;
+
+    for (const message of $$(messageSelector)) {
+      const role = message.getAttribute('data-message-author-role');
+      if (role === 'user') {
+        current = { messages: [message], startsWithUser: true };
+        turns.push(current);
+        continue;
+      }
+
+      if (role !== 'assistant') continue;
+
+      if (current?.startsWithUser) {
+        current.messages.push(message);
+        continue;
+      }
+
+      current = { messages: [message], startsWithUser: false };
+      turns.push(current);
+    }
+
+    return turns;
+  };
+
+  const getTurnReaderRoute = () => `${location.pathname}${location.search}`;
+
+  const clampTurnIndex = (index, turns) => {
+    if (!turns.length) return -1;
+    return Math.min(Math.max(index, 0), turns.length - 1);
+  };
+
+  const ensureTurnReaderControls = () => {
+    let controls = $('#kcg-turn-reader');
+    if (controls) return controls;
+
+    controls = document.createElement('div');
+    controls.id = 'kcg-turn-reader';
+    controls.className = 'kcg-turn-reader';
+    controls.innerHTML = `
+            <button type="button" data-action="prev">上一轮</button>
+            <span class="kcg-turn-reader-count">0 / 0</span>
+            <button type="button" data-action="next">下一轮</button>
+        `;
+    controls.addEventListener('click', (event) => {
+      const action = event.target?.dataset?.action;
+      if (action === 'prev') setTurnReaderIndex(turnReaderState.index - 1, true);
+      if (action === 'next') setTurnReaderIndex(turnReaderState.index + 1, true);
+    });
+    document.body.appendChild(controls);
+    return controls;
+  };
+
+  const syncTurnReaderControls = () => {
+    const controls = ensureTurnReaderControls();
+    const count = $('.kcg-turn-reader-count', controls);
+    const prev = $('[data-action="prev"]', controls);
+    const next = $('[data-action="next"]', controls);
+    const total = turnReaderState.turns.length;
+    const current = turnReaderState.index >= 0 ? turnReaderState.index + 1 : 0;
+
+    if (count) count.textContent = `${current} / ${total}`;
+    if (prev) prev.disabled = turnReaderState.index <= 0;
+    if (next) next.disabled = turnReaderState.index < 0 || turnReaderState.index >= total - 1;
+  };
+
+  const clearTurnReaderVisibility = () => {
+    $$('.kcg-turn-hidden').forEach((message) => message.classList.remove('kcg-turn-hidden'));
+  };
+
+  const getTurnVisibilityNode = (message) => {
+    let node = message;
+
+    while (node.parentElement && !node.parentElement.matches?.('main')) {
+      const parent = node.parentElement;
+      const messageRoles = parent.querySelectorAll(messageRoleSelector);
+      if (messageRoles.length !== 1 || messageRoles[0] !== message) break;
+      node = parent;
+    }
+
+    return node;
+  };
+
+  const applyTurnReaderVisibility = (scrollActive = false) => {
+    if (!getValue('k_turnreader', false)) return;
+
+    const activeTurn = turnReaderState.turns[turnReaderState.index];
+    const activeMessages = new Set(activeTurn?.messages || []);
+    const knownVisibilityNodes = new Set();
+
+    for (const turn of turnReaderState.turns) {
+      for (const message of turn.messages) {
+        const visibilityNode = getTurnVisibilityNode(message);
+        knownVisibilityNodes.add(visibilityNode);
+        visibilityNode.classList.toggle('kcg-turn-hidden', !activeMessages.has(message));
+      }
+    }
+
+    $$('.kcg-turn-hidden').forEach((node) => {
+      if (!knownVisibilityNodes.has(node)) node.classList.remove('kcg-turn-hidden');
+    });
+
+    document.body.classList.toggle('kcg-turn-reader-active', turnReaderState.turns.length > 0);
+    syncTurnReaderControls();
+
+    if (scrollActive && activeTurn?.messages[0]?.isConnected) {
+      activeTurn.messages[0].scrollIntoView({ block: 'start' });
+    }
+  };
+
+  function setTurnReaderIndex(index, scrollActive = false) {
+    turnReaderState.index = clampTurnIndex(index, turnReaderState.turns);
+    turnReaderState.followLatest =
+      turnReaderState.index >= 0 && turnReaderState.index >= turnReaderState.turns.length - 1;
+    applyTurnReaderVisibility(scrollActive);
+  }
+
+  const rebuildTurnReader = ({ forceLatest = false, scrollActive = false } = {}) => {
+    if (!getValue('k_turnreader', false)) return;
+
+    const previousTurn = turnReaderState.turns[turnReaderState.index];
+    const previousAnchor = previousTurn?.messages[0] || null;
+    const previousFollowLatest = turnReaderState.followLatest;
+    const route = getTurnReaderRoute();
+    const routeChanged = turnReaderState.route !== route;
+    const turns = buildConversationTurns();
+
+    turnReaderState.route = route;
+    turnReaderState.turns = turns;
+
+    if (!turns.length) {
+      turnReaderState.index = -1;
+      turnReaderState.followLatest = true;
+      clearTurnReaderVisibility();
+      syncTurnReaderControls();
+      return;
+    }
+
+    let nextIndex = -1;
+    if (forceLatest || routeChanged || previousFollowLatest) {
+      nextIndex = turns.length - 1;
+    } else if (previousAnchor) {
+      nextIndex = turns.findIndex((turn) => turn.messages.includes(previousAnchor));
+    }
+
+    if (nextIndex < 0) nextIndex = turnReaderState.index;
+    turnReaderState.index = clampTurnIndex(nextIndex, turns);
+    turnReaderState.followLatest = turnReaderState.index >= turns.length - 1;
+    applyTurnReaderVisibility(scrollActive || forceLatest || routeChanged);
+  };
+
+  const scheduleTurnReaderRebuild = debounce((forceLatest = false) => {
+    rebuildTurnReader({ forceLatest });
+  }, 80);
+
+  const hasAddedUserMessage = (mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (!isElement(node)) continue;
+        if (node.matches?.('div[data-message-author-role="user"]')) return true;
+        if (node.querySelector?.('div[data-message-author-role="user"]')) return true;
+      }
+    }
+
+    return false;
   };
 
   const formatHistoryTime = (value) => {
@@ -1283,10 +1467,50 @@
       updateCurrentConversation();
     }
   };
+
+  const resetTurnReader = () => {
+    stopManagedObserver('turn-reader');
+    clearTurnReaderVisibility();
+    $('#kcg-turn-reader')?.remove();
+    document.body.classList.remove('kcg-turn-reader-active');
+    turnReaderState.turns = [];
+    turnReaderState.index = -1;
+    turnReaderState.followLatest = true;
+    turnReaderState.route = '';
+  };
+
+  const setTurnReaderObserver = (enabled) => {
+    if (!enabled) {
+      resetTurnReader();
+      return;
+    }
+
+    const root = $('main');
+    if (!root) {
+      stopManagedObserver('turn-reader');
+      return;
+    }
+
+    ensureTurnReaderControls();
+    if (
+      observeManaged(
+        'turn-reader',
+        root,
+        (mutations) => {
+          scheduleTurnReaderRebuild(turnReaderState.followLatest || hasAddedUserMessage(mutations));
+        },
+        { childList: true, subtree: true }
+      )
+    ) {
+      rebuildTurnReader({ forceLatest: true, scrollActive: true });
+    }
+  };
+
   const syncFeatureObservers = () => {
     setContinueObserver(getValue('k_speakcompletely', false) === true);
     setReuseObserver(getValue('k_clonechat', false) === true);
     setHistoryObservers(getValue('k_everchanging', false) === true);
+    setTurnReaderObserver(getValue('k_turnreader', false) === true);
   };
 
   const applyFeature = (id, enabled) => {
@@ -1296,6 +1520,7 @@
     if (id === 'continue') setContinueObserver(enabled);
     if (id === 'reuse') setReuseObserver(enabled);
     if (id === 'history') setHistoryObservers(enabled);
+    if (id === 'turn-reader') setTurnReaderObserver(enabled);
     if (id === 'tracking') setTrackingScriptBlocker(enabled);
   };
 
@@ -1508,6 +1733,47 @@
                 background: rgba(0,0,0,.82);
                 color: #fff;
                 font-size: .86rem;
+            }
+            .kcg-turn-hidden {
+                display: none !important;
+            }
+            .kcg-turn-reader {
+                position: fixed;
+                left: 50%;
+                bottom: 5.25rem;
+                transform: translateX(-50%);
+                z-index: 2147483000;
+                display: none;
+                align-items: center;
+                gap: .5rem;
+                padding: .4rem;
+                border: 1px solid rgba(0,0,0,.12);
+                border-radius: .6rem;
+                background: var(--main-surface-primary, #fff);
+                color: var(--text-primary, #111);
+                box-shadow: 0 8px 24px rgba(0,0,0,.14);
+            }
+            .kcg-turn-reader-active .kcg-turn-reader {
+                display: flex;
+            }
+            .kcg-turn-reader button {
+                border: 1px solid rgba(0,0,0,.12);
+                border-radius: .45rem;
+                padding: .35rem .65rem;
+                background: transparent;
+                color: inherit;
+                font-size: .8rem;
+                cursor: pointer;
+            }
+            .kcg-turn-reader button:disabled {
+                cursor: default;
+                opacity: .45;
+            }
+            .kcg-turn-reader-count {
+                min-width: 4rem;
+                text-align: center;
+                color: var(--text-secondary, #666);
+                font-size: .8rem;
             }
             .kcg-wide section.text-token-text-primary > div > div,
             .kcg-wide #thread-bottom > div > div > div {
