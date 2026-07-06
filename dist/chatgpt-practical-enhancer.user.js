@@ -523,7 +523,14 @@
     const firstValue = (...values) => values.find((value) => value != null && String(value).trim() !== "");
     const pickField = (object, fields) => firstValue(...fields.map((field) => object?.[field]));
     const textFields = ["text", "value", "content", "parts", "message", "summary", "preview", "snippet"];
-    const idFields = ["conversation_id", "conversationId", "id"];
+    const conversationIdFields = ["conversation_id", "conversationId", "conversation_uuid", "conversationUuid"];
+    const routeConversationIdFields = conversationIdFields.concat([
+      "current_conversation_id",
+      "currentConversationId",
+      "parent_conversation_id",
+      "parentConversationId",
+      "conversation"
+    ]);
     const dateFields = [
       "update_time",
       "updated_time",
@@ -555,15 +562,19 @@
       "items",
       "conversations",
       "conversation_items",
+      "conversation_history",
+      "conversationHistory",
       "data",
       "edges",
       "nodes",
+      "response",
       "results",
       "history",
       "threads",
       "chats"
     ];
     const historyContextPattern = /conversation|history|thread|chat|edge|node|item|data|result/i;
+    const fallbackWrapperPattern = /^(data|result|response)$/i;
     const flattenText = (value, seen = /* @__PURE__ */ new WeakSet()) => {
       if (value == null) return "";
       if (typeof value === "string") return value;
@@ -597,21 +608,36 @@
     const conversationIdFromUrl = (url) => {
       const parsed = parseUrl(url);
       if (!parsed) return "";
-      for (const key of ["conversation_id", "conversationId", "conversation", "id"]) {
+      for (const key of routeConversationIdFields) {
         const id = normalizeConversationId(parsed.searchParams.get(key));
         if (id) return id;
       }
-      const match = parsed.pathname.match(/\/(?:c|conversation)\/([^/?#]+)/);
+      const match = parsed.pathname.match(/(?:^|\/)(?:c|conversation)\/([^/?#]+)/i);
       return normalizeConversationId(match?.[1]);
     };
-    const readConversationId = (payload, fallbackId = "") => normalizeConversationId(
-      firstValue(
-        pickField(payload, idFields),
-        payload?.conversation?.id,
-        payload?.metadata?.conversation_id,
-        fallbackId
-      )
-    );
+    const hasConversationRecordSignal = (payload) => {
+      if (!payload || typeof payload !== "object") return false;
+      return Boolean(
+        payload.mapping || payload.current_node || Array.isArray(payload.messages) || payload.conversation || pickField(payload, dateFields) || pickField(payload, previewFields) || pickField(payload, modelFields) || payload.title
+      );
+    };
+    const readConversationId = (payload, options = {}) => {
+      const { fallbackId = "", allowGenericId = false } = typeof options === "string" ? { fallbackId: options } : options;
+      const explicitId = normalizeConversationId(
+        firstValue(
+          pickField(payload, conversationIdFields),
+          payload?.metadata?.conversation_id,
+          payload?.metadata?.conversationId,
+          payload?.conversation?.conversation_id,
+          payload?.conversation?.conversationId
+        )
+      );
+      if (explicitId) return explicitId;
+      const nestedId = normalizeConversationId(payload?.conversation?.id);
+      if (nestedId) return nestedId;
+      const genericId = allowGenericId ? normalizeConversationId(firstValue(payload?.id, payload?.uuid)) : "";
+      return genericId || normalizeConversationId(fallbackId);
+    };
     const readHistoryDate = (payload) => normalizeHistoryDate(pickField(payload, dateFields));
     const messageTime = (message) => normalizeHistoryDate(pickField(message, dateFields))?.getTime() || 0;
     const messageRole = (message) => String(firstValue(message?.author?.role, pickField(message, ["role"]), message?.sender?.role) || "");
@@ -632,9 +658,9 @@
       return messages;
     };
     const pickPreviewMessage = (payload) => collectMessages(payload).filter((message) => messageRole(message) === "assistant").sort((a, b) => messageTime(b) - messageTime(a))[0];
-    const buildConversationRecord = (payload, fallbackId = "") => {
+    const buildConversationRecord = (payload, options = {}) => {
       if (!payload || typeof payload !== "object") return null;
-      const id = readConversationId(payload, fallbackId);
+      const id = readConversationId(payload, options);
       if (!id) return null;
       const preview = pickPreviewMessage(payload);
       const last = cleanPreviewText(
@@ -670,7 +696,7 @@
           model: record.model || current.model || ""
         });
       };
-      const visit = (value, depth, contextKey = "") => {
+      const visit = (value, depth, contextKey = "", scopedFallbackId = "") => {
         if (!value || depth > 6 || records.size > 80) return;
         if (Array.isArray(value)) {
           for (const item of value) visit(item, depth + 1, contextKey);
@@ -678,33 +704,40 @@
         }
         if (typeof value !== "object" || seen.has(value)) return;
         seen.add(value);
-        const record = buildConversationRecord(value, fallbackId);
+        const record = buildConversationRecord(value, {
+          fallbackId: scopedFallbackId,
+          allowGenericId: hasConversationRecordSignal(value) && (depth === 0 || historyContextPattern.test(contextKey))
+        });
         if (record && (historyContextPattern.test(contextKey) || value.mapping || value.messages || value.conversation_id || value.conversationId)) {
           addRecord(record);
         }
         for (const key of historyContainers) {
-          if (key in value) visit(value[key], depth + 1, key);
+          if (key in value) {
+            const child = value[key];
+            const childFallbackId = scopedFallbackId && !Array.isArray(child) && (key === "conversation" || fallbackWrapperPattern.test(key)) ? scopedFallbackId : "";
+            visit(child, depth + 1, key, childFallbackId);
+          }
         }
       };
-      visit(payload, 0);
+      visit(payload, 0, "", fallbackId);
       return Array.from(records.values());
     };
-    const conversationIdFromPage = () => {
-      const match = location.pathname.match(/\/c\/([^/?#]+)/);
-      return match?.[1] || "";
-    };
+    const conversationIdFromPage = () => conversationIdFromUrl(location.href);
     const sidebarLinkState = /* @__PURE__ */ new WeakMap();
+    const clearSidebarExtra = (link) => {
+      $(".kcg-history-extra", link)?.remove();
+      sidebarLinkState.delete(link);
+    };
     const decorateSidebar = debounce(async () => {
       if (!getValue("k_everchanging", false)) {
         $$(".kcg-history-extra").forEach((node) => node.remove());
         return;
       }
-      const links = $$(`${sidebarSelector} a[href*="/c/"]`);
+      const links = $$(`${sidebarSelector} a[href*="/c/"], ${sidebarSelector} a[href*="/conversation/"]`);
       const linkEntries = [];
       const ids = [];
       for (const link of links) {
-        const match = link.href.match(/\/c\/([^/?#]+)/);
-        const id = match?.[1];
+        const id = conversationIdFromUrl(link.href);
         if (!id) continue;
         linkEntries.push([link, id]);
         ids.push(id);
@@ -712,9 +745,15 @@
       const records = await store.getMany(ids);
       for (const [link, id] of linkEntries) {
         const record = records.get(id);
-        if (!record) continue;
+        if (!record) {
+          clearSidebarExtra(link);
+          continue;
+        }
         const text = [formatHistoryTime(record.update_time), record.last || record.model].filter(Boolean).join(" \xB7 ");
-        if (!text) continue;
+        if (!text) {
+          clearSidebarExtra(link);
+          continue;
+        }
         if (sidebarLinkState.get(link) === text) continue;
         let extra = $(".kcg-history-extra", link);
         if (!extra) {
@@ -728,9 +767,11 @@
     }, 180);
     let lastConversationFingerprint = "";
     const findAssistantMessage = (candidate) => candidate?.closest?.('[data-message-author-role="assistant"]') || (candidate?.matches?.('[data-message-author-role="assistant"]') ? candidate : null) || $$('main [data-message-author-role="assistant"]').at(-1);
-    const updateCurrentConversation = debounce(async (candidate) => {
+    const updateCurrentConversation = debounce(async (candidate, preferredId = "") => {
       if (!getValue("k_everchanging", false)) return;
-      const id = conversationIdFromPage();
+      const routeId = conversationIdFromPage();
+      const id = normalizeConversationId(preferredId) || routeId;
+      if (preferredId && routeId && routeId !== id) return;
       if (!id) return;
       const last = findAssistantMessage(candidate);
       if (!last) return;
@@ -759,7 +800,7 @@
       if (contentType && !contentType.toLowerCase().includes("json")) return;
       const fallbackId = conversationIdFromUrl(url);
       response.clone().json().then(async (data) => {
-        const id = fallbackId || readConversationId(data);
+        const id = readConversationId(data, { allowGenericId: hasConversationRecordSignal(data) }) || fallbackId;
         if (id && (method === "DELETE" || data?.is_visible === false || data?.is_archived === true || data?.is_hidden === true)) {
           await store.delete(id);
           decorateSidebar();
@@ -767,7 +808,9 @@
         }
         const records = extractConversationRecords(data, fallbackId);
         if (!records.length) {
-          if (method === "POST") setTimeout(updateCurrentConversation, 2500);
+          if (method === "POST" && id) {
+            setTimeout(() => updateCurrentConversation(null, id), 2500);
+          }
           return;
         }
         await Promise.all(
