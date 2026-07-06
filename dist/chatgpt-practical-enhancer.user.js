@@ -179,6 +179,18 @@
         this.cache.set(record.id, record);
         return this.withStore("readwrite", (store2) => store2.put(record));
       }
+      async putMany(records) {
+        const validRecords = records.filter((record) => record?.id);
+        if (!validRecords.length) return;
+        for (const record of validRecords) {
+          this.cache.set(record.id, record);
+        }
+        await this.withStore("readwrite", (objectStore) => {
+          for (const record of validRecords) {
+            objectStore.put(record);
+          }
+        });
+      }
       delete(id) {
         if (!id) return Promise.resolve();
         this.cache.delete(id);
@@ -238,7 +250,7 @@
     };
     const getPromptText = (prompt) => {
       if (!prompt) return "";
-      return "value" in prompt ? prompt.value : prompt.innerText || prompt.textContent || "";
+      return "value" in prompt ? prompt.value : prompt.textContent || prompt.innerText || "";
     };
     let sensitiveRulesSource = null;
     let sensitiveRules = [];
@@ -482,7 +494,7 @@
       if (!getValue("k_speakcompletely", false)) return;
       const buttons = root.matches?.("button") ? [root] : $$("button", root);
       const target = buttons.find(
-        (button) => /继续生成|Continue generating|Continue/i.test(button.innerText || button.ariaLabel || "")
+        (button) => /继续生成|Continue generating|Continue/i.test(button.ariaLabel || button.textContent || "")
       );
       if (target && target.dataset.kcgClicked !== "true") {
         target.dataset.kcgClicked = "true";
@@ -499,7 +511,7 @@
         event.preventDefault();
         event.stopPropagation();
         const content = $(".whitespace-pre-wrap", message) || message;
-        setPromptText((content.innerText || content.textContent || "").trim());
+        setPromptText((content.textContent || content.innerText || "").trim());
       });
       message.style.position = "relative";
       message.appendChild(button);
@@ -574,6 +586,7 @@
       "chats"
     ];
     const historyContextPattern = /conversation|history|thread|chat|edge|node|item|data|result/i;
+    const historyUrlPattern = /conversation|conversations|history|thread|threads|chat|chats|\/backend-api\/(?:c\/|conversation|conversations)/i;
     const fallbackWrapperPattern = /^(data|result|response)$/i;
     const flattenText = (value, seen = /* @__PURE__ */ new WeakSet()) => {
       if (value == null) return "";
@@ -657,7 +670,19 @@
       }
       return messages;
     };
-    const pickPreviewMessage = (payload) => collectMessages(payload).filter((message) => messageRole(message) === "assistant").sort((a, b) => messageTime(b) - messageTime(a))[0];
+    const pickPreviewMessage = (payload) => {
+      let latest = null;
+      let latestTime = -1;
+      for (const message of collectMessages(payload)) {
+        if (messageRole(message) !== "assistant") continue;
+        const time = messageTime(message);
+        if (!latest || time >= latestTime) {
+          latest = message;
+          latestTime = time;
+        }
+      }
+      return latest;
+    };
     const buildConversationRecord = (payload, options = {}) => {
       if (!payload || typeof payload !== "object") return null;
       const id = readConversationId(payload, options);
@@ -684,6 +709,7 @@
       };
     };
     const extractConversationRecords = (payload, fallbackId = "") => {
+      if (!payload || typeof payload !== "object") return [];
       const records = /* @__PURE__ */ new Map();
       const seen = /* @__PURE__ */ new WeakSet();
       const addRecord = (record) => {
@@ -724,6 +750,7 @@
     };
     const conversationIdFromPage = () => conversationIdFromUrl(location.href);
     const sidebarLinkState = /* @__PURE__ */ new WeakMap();
+    const sidebarConversationLinkSelector = ':is(a[href*="/c/"], a[href*="/conversation/"])';
     const clearSidebarExtra = (link) => {
       $(".kcg-history-extra", link)?.remove();
       sidebarLinkState.delete(link);
@@ -733,7 +760,7 @@
         $$(".kcg-history-extra").forEach((node) => node.remove());
         return;
       }
-      const links = $$(`${sidebarSelector} a[href*="/c/"], ${sidebarSelector} a[href*="/conversation/"]`);
+      const links = $$(`${sidebarSelector} ${sidebarConversationLinkSelector}`);
       const linkEntries = [];
       const ids = [];
       for (const link of links) {
@@ -766,7 +793,24 @@
       }
     }, 180);
     let lastConversationFingerprint = "";
-    const findAssistantMessage = (candidate) => candidate?.closest?.('[data-message-author-role="assistant"]') || (candidate?.matches?.('[data-message-author-role="assistant"]') ? candidate : null) || $$('main [data-message-author-role="assistant"]').at(-1);
+    const findLastAssistantMessage = () => {
+      const messages = document.querySelectorAll('main [data-message-author-role="assistant"]');
+      return messages[messages.length - 1] || null;
+    };
+    const findAssistantMessage = (candidate) => candidate?.closest?.('[data-message-author-role="assistant"]') || (candidate?.matches?.('[data-message-author-role="assistant"]') ? candidate : null) || findLastAssistantMessage();
+    const hasSidebarLinkChange = (mutations) => {
+      for (const mutation of mutations) {
+        for (const nodes of [mutation.addedNodes, mutation.removedNodes]) {
+          for (const node of nodes) {
+            if (!isElement(node)) continue;
+            if (node.matches?.(sidebarConversationLinkSelector) || node.querySelector?.(sidebarConversationLinkSelector)) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    };
     const updateCurrentConversation = debounce(async (candidate, preferredId = "") => {
       if (!getValue("k_everchanging", false)) return;
       const routeId = conversationIdFromPage();
@@ -775,7 +819,7 @@
       if (!id) return;
       const last = findAssistantMessage(candidate);
       if (!last) return;
-      const summary = (last.innerText || last.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120);
+      const summary = (last.textContent || last.innerText || "").replace(/\s+/g, " ").trim().slice(0, 120);
       const fingerprint = `${id}:${summary}`;
       if (!summary || fingerprint === lastConversationFingerprint) return;
       lastConversationFingerprint = fingerprint;
@@ -792,7 +836,9 @@
     const shouldHandleConversationResponse = (url) => {
       if (!getValue("k_everchanging", false)) return false;
       const parsed = parseUrl(url);
-      return parsed?.origin === location.origin;
+      if (parsed?.origin !== location.origin) return false;
+      const target = `${parsed.pathname}${parsed.search}`;
+      return historyUrlPattern.test(target) || Boolean(conversationIdFromUrl(parsed.toString()));
     };
     const handleConversationResponse = (url, method, response) => {
       if (!getValue("k_everchanging", false)) return;
@@ -813,16 +859,17 @@
           }
           return;
         }
-        await Promise.all(
-          records.map(async (record) => {
-            const old = await store.get(record.id) || {};
-            return store.put({
+        const oldRecords = await store.getMany(records.map((record) => record.id));
+        await store.putMany(
+          records.map((record) => {
+            const old = oldRecords.get(record.id) || {};
+            return {
               ...record,
               title: record.title || old.title || "",
               last: record.last || old.last || "",
               model: record.model || old.model || "",
               update_time: record.update_time || old.update_time || /* @__PURE__ */ new Date()
-            });
+            };
           })
         );
         decorateSidebar();
@@ -840,7 +887,7 @@
             return Promise.resolve(new Response(null, { status: 204, statusText: "No Content" }));
           }
           return rawFetch(...args).then((response) => {
-            if (shouldHandleConversationResponse(url, method)) {
+            if (shouldHandleConversationResponse(url)) {
               handleConversationResponse(url, method, response);
             }
             return response;
@@ -874,6 +921,11 @@
           }
           return rawSend.apply(this, args);
         };
+      }
+    };
+    const ensureNetworkHooks = () => {
+      if (getValue("k_intercepttracking", false) === true || getValue("k_everchanging", false) === true) {
+        hookNetwork();
       }
     };
     let trackingObserver = null;
@@ -970,7 +1022,9 @@
         $$(".kcg-history-extra").forEach((node) => node.remove());
         return;
       }
-      if (observeManaged("history-sidebar", $(sidebarSelector), decorateSidebar)) {
+      if (observeManaged("history-sidebar", $(sidebarSelector), (mutations) => {
+        if (hasSidebarLinkChange(mutations)) decorateSidebar();
+      })) {
         decorateSidebar();
       }
       if (observeManaged(
@@ -1002,6 +1056,7 @@
       setHistoryObservers(getValue("k_everchanging", false) === true);
     };
     const applyFeature = (id, enabled) => {
+      if ((id === "tracking" || id === "history") && enabled) ensureNetworkHooks();
       if (id === "wide") document.body.classList.toggle("kcg-wide", enabled);
       if (id === "clean") document.body.classList.toggle("kcg-clean", enabled);
       if (id === "continue") setContinueObserver(enabled);
@@ -1277,9 +1332,7 @@
       compileSensitiveRules();
       addStyle();
       mountButton();
-      createPanel();
       bindSensitiveScanner();
-      hookNetwork();
       applySavedOptions();
       restartKeepAlive();
       const syncDomBindings = debounce(() => {
