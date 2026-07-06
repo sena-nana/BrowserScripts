@@ -520,36 +520,174 @@
       }
       return `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
     };
-    const flattenText = (value) => {
+    const firstValue = (...values) => values.find((value) => value != null && String(value).trim() !== "");
+    const pickField = (object, fields) => firstValue(...fields.map((field) => object?.[field]));
+    const textFields = ["text", "value", "content", "parts", "message", "summary", "preview", "snippet"];
+    const idFields = ["conversation_id", "conversationId", "id"];
+    const dateFields = [
+      "update_time",
+      "updated_time",
+      "updated_at",
+      "updateTime",
+      "updatedAt",
+      "last_updated",
+      "lastUpdated",
+      "create_time",
+      "created_time",
+      "created_at",
+      "createTime",
+      "createdAt"
+    ];
+    const previewFields = [
+      "last",
+      "summary",
+      "preview",
+      "snippet",
+      "last_message",
+      "lastMessage",
+      "latest_message",
+      "latestMessage"
+    ];
+    const modelFields = ["model", "model_slug", "default_model_slug"];
+    const historyContainers = [
+      "node",
+      "conversation",
+      "items",
+      "conversations",
+      "conversation_items",
+      "data",
+      "edges",
+      "nodes",
+      "results",
+      "history",
+      "threads",
+      "chats"
+    ];
+    const historyContextPattern = /conversation|history|thread|chat|edge|node|item|data|result/i;
+    const flattenText = (value, seen = /* @__PURE__ */ new WeakSet()) => {
       if (value == null) return "";
       if (typeof value === "string") return value;
-      if (Array.isArray(value)) return value.map(flattenText).join(" ");
-      if (typeof value === "object")
-        return flattenText(value.text || value.content || value.parts || "");
-      return String(value);
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      if (Array.isArray(value)) return value.map((item) => flattenText(item, seen)).join(" ");
+      if (typeof value !== "object") return "";
+      if (seen.has(value)) return "";
+      seen.add(value);
+      return flattenText(pickField(value, textFields), seen);
     };
-    const pickPreviewMessage = (payload) => {
-      const current = payload?.mapping?.[payload?.current_node]?.message;
-      if (current?.author?.role === "assistant") return current;
-      return Object.values(payload?.mapping || {}).map((node) => node?.message).filter((message) => message?.author?.role === "assistant").sort((a, b) => Number(b.create_time || 0) - Number(a.create_time || 0))[0];
+    const cleanPreviewText = (value) => flattenText(value).replace(/\s+/g, " ").trim().slice(0, 120);
+    const normalizeHistoryDate = (value) => {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+      if (typeof value === "number" && Number.isFinite(value)) {
+        if (value <= 0) return null;
+        return new Date(value < 10 ** 10 ? value * 1e3 : value);
+      }
+      if (typeof value === "string" && value.trim()) {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric) && numeric <= 0) return null;
+        const date = Number.isFinite(numeric) ? new Date(numeric < 10 ** 10 ? numeric * 1e3 : numeric) : new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+      return null;
     };
-    const buildConversationRecord = (payload, fallbackId) => {
-      if (!payload || typeof payload !== "object") return null;
-      const id = payload.conversation_id || payload.id || fallbackId;
-      if (!id) return null;
-      const preview = pickPreviewMessage(payload);
-      const updateTime = payload.update_time || payload.create_time || Date.now();
-      return {
-        id,
-        title: payload.title || "",
-        update_time: new Date(Number(updateTime) < 10 ** 10 ? Number(updateTime) * 1e3 : updateTime),
-        last: flattenText(preview?.content?.parts || preview?.content).replace(/\s+/g, " ").trim().slice(0, 120),
-        model: preview?.metadata?.model_slug || preview?.metadata?.default_model_slug || ""
-      };
+    const normalizeConversationId = (value) => {
+      if (value == null) return "";
+      const id = String(value).trim();
+      return id && !/[/?#\s]/.test(id) ? id : "";
     };
     const conversationIdFromUrl = (url) => {
-      const match = String(url || "").match(/\/conversation\/([^/?#]+)/);
-      return match?.[1] || "";
+      const parsed = parseUrl(url);
+      if (!parsed) return "";
+      for (const key of ["conversation_id", "conversationId", "conversation", "id"]) {
+        const id = normalizeConversationId(parsed.searchParams.get(key));
+        if (id) return id;
+      }
+      const match = parsed.pathname.match(/\/(?:c|conversation)\/([^/?#]+)/);
+      return normalizeConversationId(match?.[1]);
+    };
+    const readConversationId = (payload, fallbackId = "") => normalizeConversationId(
+      firstValue(
+        pickField(payload, idFields),
+        payload?.conversation?.id,
+        payload?.metadata?.conversation_id,
+        fallbackId
+      )
+    );
+    const readHistoryDate = (payload) => normalizeHistoryDate(pickField(payload, dateFields));
+    const messageTime = (message) => normalizeHistoryDate(pickField(message, dateFields))?.getTime() || 0;
+    const messageRole = (message) => String(firstValue(message?.author?.role, pickField(message, ["role"]), message?.sender?.role) || "");
+    const collectMessages = (payload) => {
+      const messages = [];
+      if (payload?.current_node && payload?.mapping?.[payload.current_node]?.message) {
+        messages.push(payload.mapping[payload.current_node].message);
+      }
+      if (payload?.mapping && typeof payload.mapping === "object") {
+        messages.push(
+          ...Object.values(payload.mapping).map((node) => node?.message).filter(Boolean)
+        );
+      }
+      for (const value of [payload?.messages, payload?.message, payload?.conversation?.messages]) {
+        if (Array.isArray(value)) messages.push(...value);
+        else if (value && typeof value === "object") messages.push(value);
+      }
+      return messages;
+    };
+    const pickPreviewMessage = (payload) => collectMessages(payload).filter((message) => messageRole(message) === "assistant").sort((a, b) => messageTime(b) - messageTime(a))[0];
+    const buildConversationRecord = (payload, fallbackId = "") => {
+      if (!payload || typeof payload !== "object") return null;
+      const id = readConversationId(payload, fallbackId);
+      if (!id) return null;
+      const preview = pickPreviewMessage(payload);
+      const last = cleanPreviewText(
+        firstValue(
+          pickField(payload, previewFields),
+          preview?.content?.parts,
+          preview?.content,
+          preview?.message
+        )
+      );
+      const updateTime = readHistoryDate(payload) || (preview ? normalizeHistoryDate(messageTime(preview)) : null);
+      if (!updateTime && !last && !payload.title && !preview) return null;
+      return {
+        id,
+        title: String(firstValue(payload.title, payload.name) || ""),
+        update_time: updateTime || /* @__PURE__ */ new Date(),
+        last,
+        model: String(
+          firstValue(pickField(payload, modelFields), pickField(preview?.metadata, modelFields)) || ""
+        )
+      };
+    };
+    const extractConversationRecords = (payload, fallbackId = "") => {
+      const records = /* @__PURE__ */ new Map();
+      const seen = /* @__PURE__ */ new WeakSet();
+      const addRecord = (record) => {
+        const current = records.get(record.id) || {};
+        records.set(record.id, {
+          id: record.id,
+          title: record.title || current.title || "",
+          update_time: record.update_time || current.update_time || /* @__PURE__ */ new Date(),
+          last: record.last || current.last || "",
+          model: record.model || current.model || ""
+        });
+      };
+      const visit = (value, depth, contextKey = "") => {
+        if (!value || depth > 6 || records.size > 80) return;
+        if (Array.isArray(value)) {
+          for (const item of value) visit(item, depth + 1, contextKey);
+          return;
+        }
+        if (typeof value !== "object" || seen.has(value)) return;
+        seen.add(value);
+        const record = buildConversationRecord(value, fallbackId);
+        if (record && (historyContextPattern.test(contextKey) || value.mapping || value.messages || value.conversation_id || value.conversationId)) {
+          addRecord(record);
+        }
+        for (const key of historyContainers) {
+          if (key in value) visit(value[key], depth + 1, key);
+        }
+      };
+      visit(payload, 0);
+      return Array.from(records.values());
     };
     const conversationIdFromPage = () => {
       const match = location.pathname.match(/\/c\/([^/?#]+)/);
@@ -610,60 +748,43 @@
       });
       decorateSidebar();
     }, 800);
-    const conversationListPattern = /\/backend-api\/conversations\?.*offset=/;
-    const conversationDetailPattern = /\/backend-api\/conversation\/[^/?#]+/;
-    const conversationFallbackPattern = /\/backend-api\/f\/conversation/;
-    const shouldHandleConversationResponse = (url, method) => {
+    const shouldHandleConversationResponse = (url) => {
       if (!getValue("k_everchanging", false)) return false;
-      const urlText = String(url || "");
-      return conversationListPattern.test(urlText) || conversationDetailPattern.test(urlText) || method === "POST" && conversationFallbackPattern.test(urlText);
+      const parsed = parseUrl(url);
+      return parsed?.origin === location.origin;
     };
     const handleConversationResponse = (url, method, response) => {
       if (!getValue("k_everchanging", false)) return;
-      const urlText = String(url || "");
-      if (conversationListPattern.test(urlText)) {
-        const cloned = response.clone();
-        cloned.json().then(async (data) => {
-          if (!Array.isArray(data?.items)) return;
-          await Promise.all(
-            data.items.map(
-              (item) => store.put({
-                id: item.id,
-                title: item.title || "",
-                update_time: new Date(item.update_time || Date.now()),
-                last: "",
-                model: ""
-              })
-            )
-          );
+      const contentType = response.headers?.get?.("content-type") || "";
+      if (contentType && !contentType.toLowerCase().includes("json")) return;
+      const fallbackId = conversationIdFromUrl(url);
+      response.clone().json().then(async (data) => {
+        const id = fallbackId || readConversationId(data);
+        if (id && (method === "DELETE" || data?.is_visible === false || data?.is_archived === true || data?.is_hidden === true)) {
+          await store.delete(id);
           decorateSidebar();
-        }).catch(() => {
-        });
-        return;
-      }
-      if (conversationDetailPattern.test(urlText)) {
-        const cloned = response.clone();
-        cloned.json().then(async (data) => {
-          const id = conversationIdFromUrl(urlText);
-          if (method === "PATCH" && (data?.is_visible === false || data?.is_archived === true || data?.is_hidden === true)) {
-            await store.delete(id);
-            decorateSidebar();
-            return;
-          }
-          if (method === "GET") {
-            const record = buildConversationRecord(data, id);
-            if (record) {
-              await store.put(record);
-              decorateSidebar();
-            }
-          }
-        }).catch(() => {
-        });
-        return;
-      }
-      if (conversationFallbackPattern.test(urlText) && method === "POST") {
-        setTimeout(updateCurrentConversation, 2500);
-      }
+          return;
+        }
+        const records = extractConversationRecords(data, fallbackId);
+        if (!records.length) {
+          if (method === "POST") setTimeout(updateCurrentConversation, 2500);
+          return;
+        }
+        await Promise.all(
+          records.map(async (record) => {
+            const old = await store.get(record.id) || {};
+            return store.put({
+              ...record,
+              title: record.title || old.title || "",
+              last: record.last || old.last || "",
+              model: record.model || old.model || "",
+              update_time: record.update_time || old.update_time || /* @__PURE__ */ new Date()
+            });
+          })
+        );
+        decorateSidebar();
+      }).catch(() => {
+      });
     };
     const hookNetwork = () => {
       if (win.fetch && win.fetch.kcgCleanHooked !== true) {
