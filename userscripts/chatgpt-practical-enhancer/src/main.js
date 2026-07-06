@@ -33,8 +33,8 @@
     {
       id: 'keep',
       type: 'action',
-      title: '保持会话间隔',
-      desc: '定时请求会话状态，降低页面闲置失效概率'
+      title: '保持会话',
+      desc: '启用后定时检查会话状态'
     },
     {
       id: 'data',
@@ -320,7 +320,7 @@
     });
   };
 
-  const showDialog = ({ title, body, inputType, value, onSave }) => {
+  const showDialog = ({ title, body, inputType, value, content, focusSelector, onSave }) => {
     const overlay = document.createElement('div');
     overlay.className = 'kcg-dialog';
     overlay.innerHTML = `
@@ -328,9 +328,10 @@
                 <div class="kcg-dialog-title">${html(title)}</div>
                 ${body ? `<div class="kcg-dialog-body">${html(body)}</div>` : ''}
                 ${
-                  inputType === 'textarea'
+                  content ||
+                  (inputType === 'textarea'
                     ? `<textarea class="kcg-dialog-input" rows="8">${html(value || '')}</textarea>`
-                    : `<input class="kcg-dialog-input" value="${html(value || '')}">`
+                    : `<input class="kcg-dialog-input" value="${html(value || '')}">`)
                 }
                 <div class="kcg-dialog-actions">
                     <button type="button" data-action="cancel">取消</button>
@@ -353,14 +354,46 @@
     overlay.addEventListener('click', (event) => {
       if (event.target === overlay || event.target.dataset.action === 'cancel') close();
       if (event.target.dataset.action === 'save') {
-        onSave?.($('.kcg-dialog-input', overlay).value);
+        onSave?.($('.kcg-dialog-input', overlay)?.value, overlay);
         close();
       }
     });
     document.addEventListener('keydown', onEsc);
 
     document.body.appendChild(overlay);
-    $('.kcg-dialog-input', overlay)?.focus();
+    $(focusSelector || '.kcg-dialog-input', overlay)?.focus();
+  };
+
+  const showKeepAliveDialog = () => {
+    showDialog({
+      title: '保持会话',
+      content: `
+                <label class="kcg-check">
+                    <input class="kcg-keep-enabled" type="checkbox" ${isKeepAliveEnabled() ? 'checked' : ''}>
+                    <span>启用保持会话</span>
+                </label>
+                <label class="kcg-field">
+                    <span>间隔秒数</span>
+                    <input class="kcg-dialog-input kcg-keep-interval" value="${html(String(getKeepInterval()))}" inputmode="numeric">
+                </label>
+            `,
+      focusSelector: '.kcg-keep-interval',
+      onSave: (_, overlay) => {
+        const nextEnabled = $('.kcg-keep-enabled', overlay)?.checked === true;
+        const seconds = Math.max(10, parseInt($('.kcg-keep-interval', overlay)?.value, 10) || 50);
+        setValue('k_keepalive', nextEnabled);
+        setValue('k_interval', seconds);
+        restartKeepAlive();
+        syncPanelState();
+        toast(nextEnabled ? `保持会话已开启，每 ${seconds} 秒检查一次` : '保持会话已关闭');
+      }
+    });
+  };
+
+  const getFeatureDesc = (item) => {
+    if (item.id !== 'keep') return item.desc;
+    if (!isKeepAliveEnabled()) return `已关闭，间隔保留为 ${getKeepInterval()} 秒`;
+    return `已开启，每 ${getKeepInterval()} 秒检查一次`;
   };
 
   const createPanel = () => {
@@ -388,7 +421,7 @@
       row.innerHTML = `
                 <span>
                     <strong>${html(item.title)}</strong>
-                    <small>${html(item.desc)}</small>
+                    <small>${html(getFeatureDesc(item))}</small>
                 </span>
                 ${item.type === 'toggle' ? '<i class="kcg-switch"></i>' : '<em>设置</em>'}
             `;
@@ -409,18 +442,7 @@
 
       if (item.id === 'keep') {
         closePanel();
-        showDialog({
-          title: '保持会话间隔',
-          body: '单位：秒。建议不要低于 50。',
-          inputType: 'input',
-          value: String(getKeepInterval()),
-          onSave: (value) => {
-            const seconds = Math.max(10, parseInt(value, 10) || 50);
-            setValue('k_interval', seconds);
-            restartKeepAlive();
-            toast(`保持会话间隔已设为 ${seconds} 秒`);
-          }
-        });
+        showKeepAliveDialog();
         return;
       }
 
@@ -451,9 +473,10 @@
 
   const syncPanelState = () => {
     for (const item of features) {
-      if (item.type !== 'toggle') continue;
       const row = $(`#kcg-panel [data-feature-id="${item.id}"]`);
-      row?.classList.toggle('kcg-on', getValue(item.key, false) === true);
+      if (!row) continue;
+      $('small', row)?.replaceChildren(document.createTextNode(getFeatureDesc(item)));
+      if (item.type === 'toggle') row?.classList.toggle('kcg-on', getValue(item.key, false) === true);
     }
   };
 
@@ -496,10 +519,13 @@
   };
 
   const getKeepInterval = () => Math.max(10, parseInt(getValue('k_interval', 50), 10) || 50);
+  const isKeepAliveEnabled = () => getValue('k_keepalive', false) === true;
   let keepTimer = null;
 
   const restartKeepAlive = () => {
     clearInterval(keepTimer);
+    keepTimer = null;
+    if (!isKeepAliveEnabled()) return;
     keepTimer = setInterval(keepSession, getKeepInterval() * 1000);
   };
 
@@ -1133,6 +1159,26 @@
                 margin-bottom: .75rem;
                 color: var(--text-secondary, #666);
                 font-size: .86rem;
+            }
+            .kcg-check, .kcg-field {
+                display: grid;
+                gap: .4rem;
+                margin-bottom: .75rem;
+                color: inherit;
+                font-size: .9rem;
+            }
+            .kcg-check {
+                grid-template-columns: auto 1fr;
+                align-items: center;
+            }
+            .kcg-check input {
+                width: 1rem;
+                height: 1rem;
+                margin: 0;
+            }
+            .kcg-field span {
+                color: var(--text-secondary, #666);
+                font-size: .8rem;
             }
             .kcg-dialog-input {
                 width: 100%;
