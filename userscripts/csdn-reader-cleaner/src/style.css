@@ -1,0 +1,38 @@
+.csdn-side-toolbar,
+.blog_container_aside,
+.toolbar-inside,
+.passport-login-container,
+.login-mark,
+.hide-preCode-box,
+.recommend-box,
+.programmer1Box,
+.template-box,
+.more-toolbox-new,
+.left-toolbox,
+.right-item-ad,
+.csdn-tracking-statistics,
+.passport-login-tip-container,
+.btn-readmore,
+.readall_box {
+  display: none !important;
+}
+
+#mainBox,
+.main_father,
+.blog-content-box,
+#article_content,
+.htmledit_views {
+  max-width: min(980px, calc(100vw - 32px)) !important;
+}
+
+#article_content,
+.htmledit_views {
+  max-height: none !important;
+  user-select: text !important;
+}
+
+.vm-csdn-copy-ready pre,
+.vm-csdn-copy-ready code,
+.vm-csdn-copy-ready article {
+  user-select: text !important;
+}

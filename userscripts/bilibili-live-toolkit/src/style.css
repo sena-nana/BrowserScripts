@@ -1,0 +1,35 @@
+.web-player-icon-roomStatus,
+.gift-panel,
+.shop-popover,
+.pk-process,
+.live-skin-normal-a-text,
+.flip-view,
+.game-party-panel,
+.combo-card,
+.header-info-ctnr .right-ctnr,
+.room-bg,
+.ad-banner {
+  display: none !important;
+}
+
+.vm-bilibili-live-toolkit {
+  border: 1px solid rgb(255 255 255 / 28%);
+  background: rgb(24 24 27 / 88%);
+  color: #fff;
+}
+
+.vm-bilibili-live-toolkit-title {
+  font-weight: 700;
+}
+
+.vm-bilibili-live-toolkit-info {
+  overflow: hidden;
+  color: rgb(255 255 255 / 76%);
+  white-space: pre-line;
+}
+
+.vm-bilibili-live-toolkit button {
+  border: 1px solid rgb(255 255 255 / 20%);
+  background: rgb(255 255 255 / 12%);
+  color: inherit;
+}

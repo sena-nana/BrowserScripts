@@ -12,6 +12,7 @@ export interface UserscriptMeta {
   runAt?: RunAt;
   noframes?: boolean;
   injectInto?: InjectInto;
+  excludeMatch?: string[];
   downloadURL?: string;
   updateURL?: string;
   supportURL?: string;
@@ -59,6 +60,10 @@ export function validateUserscriptMeta(meta: UserscriptMeta): void {
 
   if (matches.some((match) => match === '*://*/*' || match === '*')) {
     errors.push('global @match patterns require an explicit project decision');
+  }
+
+  if (meta.excludeMatch?.some((match) => !match.trim())) {
+    errors.push('@exclude-match values cannot be empty');
   }
 
   const grants = getMetaGrants(meta);

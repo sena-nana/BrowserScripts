@@ -6,7 +6,7 @@ import {
 } from './validate-meta.ts';
 
 function line(key: string, value: string): string {
-  return `// @${key.padEnd(12, ' ')}${value}`;
+  return `// @${key.padEnd(Math.max(12, key.length + 1), ' ')}${value}`;
 }
 
 export function emitMetadata(meta: UserscriptMeta): string {
@@ -20,6 +20,10 @@ export function emitMetadata(meta: UserscriptMeta): string {
 
   for (const match of getMetaMatches(meta)) {
     lines.push(line('match', match));
+  }
+
+  for (const excludeMatch of meta.excludeMatch ?? []) {
+    lines.push(line('exclude-match', excludeMatch));
   }
 
   if (meta.runAt) {

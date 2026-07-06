@@ -1,0 +1,20 @@
+.vm-dlsite-voice-links-actions {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.vm-dlsite-voice-links-actions a,
+.vm-dlsite-voice-link {
+  border-bottom: 1px solid currentcolor;
+  color: #b45f06 !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.vm-dlsite-voice-links-actions a {
+  border: 1px solid #d7a25a;
+  border-radius: 6px;
+  padding: 5px 9px;
+  background: #fff8ec;
+}

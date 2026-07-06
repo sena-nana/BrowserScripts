@@ -1,0 +1,24 @@
+.vm-scrollbar-dark {
+  scrollbar-color: #5c6472 #111318;
+  scrollbar-width: thin;
+}
+
+.vm-scrollbar-dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.vm-scrollbar-dark ::-webkit-scrollbar-track {
+  background: #111318;
+}
+
+.vm-scrollbar-dark ::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 2px solid #111318;
+  border-radius: 8px;
+  background: #5c6472;
+}
+
+.vm-scrollbar-dark ::-webkit-scrollbar-thumb:hover {
+  background: #788191;
+}

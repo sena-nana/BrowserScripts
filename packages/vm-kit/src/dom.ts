@@ -93,3 +93,12 @@ export function ensureElement<K extends keyof HTMLElementTagNameMap>(
   (options.parent ?? document.body).append(element);
   return element;
 }
+
+export function observeDocument(
+  callback: MutationCallback,
+  options: MutationObserverInit = { childList: true, subtree: true }
+): StopObserver {
+  const observer = new MutationObserver(callback);
+  observer.observe(document.documentElement, options);
+  return () => observer.disconnect();
+}

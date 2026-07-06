@@ -1,5 +1,10 @@
-import { createLogger, ensureElement, injectStyle, onUrlChange } from '@browserscripts/vm-kit';
-import { installDebugBridge } from './debug.ts';
+import {
+  createLogger,
+  ensureElement,
+  injectStyle,
+  onUrlChange,
+  installDebugBridge
+} from '@browserscripts/vm-kit';
 import styleText from './style.css';
 
 const scriptId = 'example';
@@ -29,7 +34,7 @@ function renderBadge(): void {
 const stopUrlWatcher = onUrlChange(() => renderBadge());
 
 if (__DEV__) {
-  installDebugBridge({
+  installDebugBridge(scriptId, {
     rerun: renderBadge,
     state: () => ({
       markerExists: Boolean(document.getElementById(markerId)),

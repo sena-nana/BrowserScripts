@@ -15,6 +15,7 @@
     "check:meta": "tsx tools/check-meta.mjs",
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
     "lint": "eslint .",
+    "test": "tsx --test \"packages/**/*.test.ts\" \"userscripts/**/*.test.ts\"",
     "format:check": "prettier . --check"
   },
   "devDependencies": {
