@@ -20,7 +20,7 @@ Install `dist/chatgpt-practical-enhancer.user.js` in Violentmonkey.
 ## Manual Verification
 
 1. Build the script and install `dist/chatgpt-practical-enhancer.user.js` in Violentmonkey.
-2. Open `https://chatgpt.com/` and confirm the `增强` entry appears in the sidebar or lower-left floating position.
+2. Open `https://chatgpt.com/` and confirm the `增强` entry appears in the lower-left floating position.
 3. Open the panel and confirm keep-alive shows as disabled by default.
 4. Enable keep-alive, set an interval, refresh, and confirm the enabled state and interval persist.
 5. Disable keep-alive and confirm `/api/auth/session` polling stops while the saved interval remains.

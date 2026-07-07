@@ -536,12 +536,8 @@
       button.addEventListener('click', openPanel);
     }
 
-    const sidebar = $(sidebarSelector);
-    if (sidebar) {
-      button.classList.remove('kcg-floating');
-      sidebar.insertBefore(button, sidebar.firstChild);
-    } else if (!button.isConnected) {
-      button.classList.add('kcg-floating');
+    button.classList.add('kcg-floating');
+    if (button.parentElement !== document.body) {
       document.body.appendChild(button);
     }
   };
@@ -1220,6 +1216,29 @@
 
   const sidebarLinkState = new WeakMap();
   const sidebarConversationLinkSelector = ':is(a[href*="/c/"], a[href*="/conversation/"])';
+  let sidebarDecorationReady = false;
+  let sidebarDecorationReadyTimer = null;
+
+  const markSidebarDecorationReady = () => {
+    if (sidebarDecorationReady) return;
+    sidebarDecorationReady = true;
+    if (getValue('k_everchanging', false) === true) setHistoryObservers(true);
+  };
+
+  const scheduleSidebarDecorationReady = () => {
+    if (sidebarDecorationReady || sidebarDecorationReadyTimer) return;
+
+    const arm = () => {
+      clearTimeout(sidebarDecorationReadyTimer);
+      sidebarDecorationReadyTimer = setTimeout(markSidebarDecorationReady, 1500);
+    };
+
+    if (document.readyState === 'complete') {
+      arm();
+    } else {
+      window.addEventListener('load', arm, { once: true });
+    }
+  };
 
   const clearSidebarExtra = (link) => {
     $('.kcg-history-extra', link)?.remove();
@@ -1572,12 +1591,16 @@
       return;
     }
 
-    if (
-      observeManaged('history-sidebar', $(sidebarSelector), (mutations) => {
-        if (hasSidebarLinkChange(mutations)) decorateSidebar();
-      })
-    ) {
-      decorateSidebar();
+    if (sidebarDecorationReady) {
+      if (
+        observeManaged('history-sidebar', $(sidebarSelector), (mutations) => {
+          if (hasSidebarLinkChange(mutations)) decorateSidebar();
+        })
+      ) {
+        decorateSidebar();
+      }
+    } else {
+      stopManagedObserver('history-sidebar');
     }
 
     if (
@@ -2003,6 +2026,7 @@
     addStyle();
     mountButton();
     bindSensitiveScanner();
+    scheduleSidebarDecorationReady();
     applySavedOptions();
     restartKeepAlive();
 

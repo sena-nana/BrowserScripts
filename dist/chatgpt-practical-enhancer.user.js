@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ChatGPT 实用增强
 // @namespace   https://github.com/wangjunxue/BrowserScripts
-// @version     35.1.0-clean
+// @version     35.1.1-clean
 // @description 保持会话、阻止跟踪、敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用我的消息、长对话单轮显示、侧边栏摘要。
 // @match       https://chatgpt.com/*
 // @match       https://chat.openai.com/*
@@ -477,12 +477,8 @@
         button.textContent = "\u589E\u5F3A";
         button.addEventListener("click", openPanel);
       }
-      const sidebar = $(sidebarSelector);
-      if (sidebar) {
-        button.classList.remove("kcg-floating");
-        sidebar.insertBefore(button, sidebar.firstChild);
-      } else if (!button.isConnected) {
-        button.classList.add("kcg-floating");
+      button.classList.add("kcg-floating");
+      if (button.parentElement !== document.body) {
         document.body.appendChild(button);
       }
     };
@@ -1016,6 +1012,25 @@
     const conversationIdFromPage = () => conversationIdFromUrl(location.href);
     const sidebarLinkState = /* @__PURE__ */ new WeakMap();
     const sidebarConversationLinkSelector = ':is(a[href*="/c/"], a[href*="/conversation/"])';
+    let sidebarDecorationReady = false;
+    let sidebarDecorationReadyTimer = null;
+    const markSidebarDecorationReady = () => {
+      if (sidebarDecorationReady) return;
+      sidebarDecorationReady = true;
+      if (getValue("k_everchanging", false) === true) setHistoryObservers(true);
+    };
+    const scheduleSidebarDecorationReady = () => {
+      if (sidebarDecorationReady || sidebarDecorationReadyTimer) return;
+      const arm = () => {
+        clearTimeout(sidebarDecorationReadyTimer);
+        sidebarDecorationReadyTimer = setTimeout(markSidebarDecorationReady, 1500);
+      };
+      if (document.readyState === "complete") {
+        arm();
+      } else {
+        window.addEventListener("load", arm, { once: true });
+      }
+    };
     const clearSidebarExtra = (link) => {
       $(".kcg-history-extra", link)?.remove();
       sidebarLinkState.delete(link);
@@ -1287,10 +1302,14 @@
         $$(".kcg-history-extra").forEach((node) => node.remove());
         return;
       }
-      if (observeManaged("history-sidebar", $(sidebarSelector), (mutations) => {
-        if (hasSidebarLinkChange(mutations)) decorateSidebar();
-      })) {
-        decorateSidebar();
+      if (sidebarDecorationReady) {
+        if (observeManaged("history-sidebar", $(sidebarSelector), (mutations) => {
+          if (hasSidebarLinkChange(mutations)) decorateSidebar();
+        })) {
+          decorateSidebar();
+        }
+      } else {
+        stopManagedObserver("history-sidebar");
       }
       if (observeManaged(
         "history-main",
@@ -1696,6 +1715,7 @@
       addStyle();
       mountButton();
       bindSensitiveScanner();
+      scheduleSidebarDecorationReady();
       applySavedOptions();
       restartKeepAlive();
       const syncDomBindings = debounce(() => {
