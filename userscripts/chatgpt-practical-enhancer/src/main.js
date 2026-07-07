@@ -2049,12 +2049,15 @@
                 font-size: .86rem;
             }
             .kcg-turn-hidden {
+                box-sizing: border-box !important;
+                height: var(--kcg-turn-height, auto) !important;
                 min-height: var(--kcg-turn-height, 1px) !important;
                 visibility: hidden !important;
                 pointer-events: none !important;
                 user-select: none !important;
                 overflow: hidden !important;
                 overflow-anchor: none;
+                contain: layout paint;
             }
             .kcg-turn-reader-active .kcg-turn-active-tail {
                 min-height: max(32rem, calc(100vh + 1px));

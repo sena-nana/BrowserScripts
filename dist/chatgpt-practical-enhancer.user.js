@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ChatGPT 实用增强
 // @namespace   https://github.com/wangjunxue/BrowserScripts
-// @version     35.2.0-clean
+// @version     35.2.1-clean
 // @description 保持会话、阻止跟踪、敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用我的消息、长对话单轮显示、侧边栏摘要。
 // @match       https://chatgpt.com/*
 // @match       https://chat.openai.com/*
@@ -1710,12 +1710,15 @@
                 font-size: .86rem;
             }
             .kcg-turn-hidden {
+                box-sizing: border-box !important;
+                height: var(--kcg-turn-height, auto) !important;
                 min-height: var(--kcg-turn-height, 1px) !important;
                 visibility: hidden !important;
                 pointer-events: none !important;
                 user-select: none !important;
                 overflow: hidden !important;
                 overflow-anchor: none;
+                contain: layout paint;
             }
             .kcg-turn-reader-active .kcg-turn-active-tail {
                 min-height: max(32rem, calc(100vh + 1px));
