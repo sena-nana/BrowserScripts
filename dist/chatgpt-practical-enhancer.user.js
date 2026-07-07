@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ChatGPT 实用增强
 // @namespace   https://github.com/wangjunxue/BrowserScripts
-// @version     35.1.6-clean
+// @version     35.1.7-clean
 // @description 保持会话、阻止跟踪、敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用我的消息、长对话单轮显示、侧边栏摘要。
 // @match       https://chatgpt.com/*
 // @match       https://chat.openai.com/*
@@ -580,6 +580,8 @@
       return count ? `${base}#${count + 1}` : base;
     };
     const getTurnVisibilityNode = (message) => {
+      const section = message.closest?.('[data-testid^="conversation-turn-"]');
+      if (section) return section;
       let node = message;
       while (node.parentElement && !node.parentElement.matches?.("main")) {
         const parent = node.parentElement;
@@ -807,9 +809,12 @@
       const route = getTurnReaderRoute();
       const routeChanged = turnReaderState.route !== route;
       const currentTurns = buildConversationTurns();
-      if (!routeChanged && !currentTurns.length && turnReaderState.turns.length) {
-        document.body.classList.toggle("kcg-turn-reader-active", true);
-        syncTurnReaderControls();
+      const hasCurrentMessages = Boolean($(messageSelector));
+      if (!currentTurns.length && hasCurrentMessages) {
+        if (turnReaderState.turns.length) {
+          document.body.classList.toggle("kcg-turn-reader-active", true);
+          syncTurnReaderControls();
+        }
         return;
       }
       const turns = routeChanged ? currentTurns.map(toTurnReaderItem) : mergeKnownTurns(currentTurns);

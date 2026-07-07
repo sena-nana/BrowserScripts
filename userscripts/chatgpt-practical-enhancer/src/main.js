@@ -665,6 +665,9 @@
   };
 
   const getTurnVisibilityNode = (message) => {
+    const section = message.closest?.('[data-testid^="conversation-turn-"]');
+    if (section) return section;
+
     let node = message;
 
     while (node.parentElement && !node.parentElement.matches?.('main')) {
@@ -950,9 +953,12 @@
     const route = getTurnReaderRoute();
     const routeChanged = turnReaderState.route !== route;
     const currentTurns = buildConversationTurns();
-    if (!routeChanged && !currentTurns.length && turnReaderState.turns.length) {
-      document.body.classList.toggle('kcg-turn-reader-active', true);
-      syncTurnReaderControls();
+    const hasCurrentMessages = Boolean($(messageSelector));
+    if (!currentTurns.length && hasCurrentMessages) {
+      if (turnReaderState.turns.length) {
+        document.body.classList.toggle('kcg-turn-reader-active', true);
+        syncTurnReaderControls();
+      }
       return;
     }
 
