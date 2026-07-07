@@ -30,5 +30,6 @@ Install `dist/chatgpt-practical-enhancer.user.js` in Violentmonkey.
 9. Enable side-bar summary, open a conversation, and confirm visited conversations can show time or summary metadata in the sidebar.
 10. Open a long conversation, enable single-turn display, and confirm only one question/answer turn is visible with a short-line navigator on the right side.
 11. Click different right-side lines and confirm each line switches to the matching conversation turn and scrolls to the correct message.
-12. Send a new message while single-turn display is enabled and confirm the view follows the latest turn.
-13. Disable single-turn display and confirm all conversation messages are visible again and the right-side navigator is removed.
+12. Select a short turn that would not fill the viewport and confirm the page does not repeatedly flash, clear messages, or change navigator counts.
+13. Send a new message while single-turn display is enabled and confirm the view follows the latest turn.
+14. Disable single-turn display and confirm all conversation messages are visible again and the right-side navigator is removed.
