@@ -26,6 +26,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 - `form.w-full #prompt-textarea`
 - `nav.flex:not(#stage-sidebar-tiny-bar)`
 - Width and home-cleanup selectors that depend on ChatGPT class names.
+- Single-turn display depends on `data-message-author-role` message nodes to split user/assistant turns.
 
 ## Required Permissions
 
@@ -43,13 +44,14 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 4. Change the keep-alive interval, refresh, and confirm the interval persists.
 5. Disable keep-alive and confirm session polling stops.
 6. Toggle one option, refresh, and confirm the option state persists.
-7. Check DevTools for runtime errors if ChatGPT changes selectors.
+7. Enable single-turn display in a long conversation and confirm the right-side short-line navigator switches between complete conversation turns.
+8. Check DevTools for runtime errors if ChatGPT changes selectors.
 
 ## Known Breakage Points
 
 - ChatGPT DOM class names and prompt/sidebar selectors change often.
 - ChatGPT history response shapes can change, which may affect sidebar summaries.
-- Single-turn display groups messages by `data-message-author-role`; if ChatGPT changes message role attributes, the performance mode needs selector review.
+- Single-turn display groups turns by `data-message-author-role` and rebuilds the turn model from current DOM; if ChatGPT changes message role attributes, the performance mode needs selector review.
 
 ## Last Verified
 

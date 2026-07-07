@@ -91,7 +91,7 @@
       key: 'k_turnreader',
       type: 'toggle',
       title: '长对话单轮显示',
-      desc: '长对话中只显示当前问答轮，可用上一轮和下一轮切换'
+      desc: '长对话中只显示当前问答轮，可用右侧定位块切换'
     }
   ];
 
@@ -619,6 +619,7 @@
   const turnReaderState = {
     turns: [],
     index: -1,
+    selectedKey: '',
     followLatestAfterSend: false,
     localSendPendingUntil: 0,
     route: ''
@@ -635,28 +636,82 @@
     turnReaderState.localSendPendingUntil = Date.now() + localSendIntentMs;
   }
 
+  const normalizeTurnText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+
+  const hashTurnText = (value) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash * 31 + value.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash).toString(36);
+  };
+
+  const getTurnKey = (message, order, seen) => {
+    const role = message.getAttribute('data-message-author-role') || 'message';
+    const attributeValue = [
+      'data-message-id',
+      'data-testid',
+      'data-turn-id',
+      'id'
+    ]
+      .map((name) => normalizeTurnText(message.getAttribute(name)))
+      .find(Boolean);
+    const text = normalizeTurnText(message.textContent || message.innerText).slice(0, 320);
+    const base = attributeValue
+      ? `attr:${role}:${attributeValue}`
+      : text
+        ? `text:${role}:${text.length}:${hashTurnText(text)}`
+        : `index:${role}:${order}`;
+    const count = seen.get(base) || 0;
+
+    seen.set(base, count + 1);
+    return count ? `${base}#${count + 1}` : base;
+  };
+
+  const getTurnVisibilityNode = (message) => {
+    let node = message;
+
+    while (node.parentElement && !node.parentElement.matches?.('main')) {
+      const parent = node.parentElement;
+      const messageRoles = parent.querySelectorAll(messageRoleSelector);
+      if (messageRoles.length !== 1 || messageRoles[0] !== message) break;
+      node = parent;
+    }
+
+    return node;
+  };
+
   const buildConversationTurns = () => {
     const turns = [];
+    const seenKeys = new Map();
     let current = null;
 
-    for (const message of $$(messageSelector)) {
+    $$(messageSelector).forEach((message, order) => {
       const role = message.getAttribute('data-message-author-role');
-      if (role === 'user') {
-        current = { messages: [message], startsWithUser: true };
-        turns.push(current);
-        continue;
-      }
+      if (role !== 'user' && role !== 'assistant') return;
 
-      if (role !== 'assistant') continue;
+      if (role === 'user') {
+        current = {
+          key: getTurnKey(message, order, seenKeys),
+          messages: [message],
+          startsWithUser: true
+        };
+        turns.push(current);
+        return;
+      }
 
       if (current?.startsWithUser) {
         current.messages.push(message);
-        continue;
+        return;
       }
 
-      current = { messages: [message], startsWithUser: false };
+      current = {
+        key: getTurnKey(message, order, seenKeys),
+        messages: [message],
+        startsWithUser: false
+      };
       turns.push(current);
-    }
+    });
 
     return turns;
   };
@@ -675,15 +730,12 @@
     controls = document.createElement('div');
     controls.id = 'kcg-turn-reader';
     controls.className = 'kcg-turn-reader';
-    controls.innerHTML = `
-            <button type="button" data-action="prev">上一轮</button>
-            <span class="kcg-turn-reader-count">0 / 0</span>
-            <button type="button" data-action="next">下一轮</button>
-        `;
     controls.addEventListener('click', (event) => {
-      const action = event.target?.dataset?.action;
-      if (action === 'prev') setTurnReaderIndex(turnReaderState.index - 1, true);
-      if (action === 'next') setTurnReaderIndex(turnReaderState.index + 1, true);
+      const button = event.target?.closest?.('button[data-index]');
+      if (!button) return;
+      const index = Number(button.dataset.index);
+      if (!Number.isInteger(index)) return;
+      setTurnReaderIndex(index, true);
     });
     document.body.appendChild(controls);
     return controls;
@@ -691,32 +743,55 @@
 
   const syncTurnReaderControls = () => {
     const controls = ensureTurnReaderControls();
-    const count = $('.kcg-turn-reader-count', controls);
-    const prev = $('[data-action="prev"]', controls);
-    const next = $('[data-action="next"]', controls);
-    const total = turnReaderState.turns.length;
-    const current = turnReaderState.index >= 0 ? turnReaderState.index + 1 : 0;
+    const fragment = document.createDocumentFragment();
+    const previousScrollTop = controls.scrollTop;
 
-    if (count) count.textContent = `${current} / ${total}`;
-    if (prev) prev.disabled = turnReaderState.index <= 0;
-    if (next) next.disabled = turnReaderState.index < 0 || turnReaderState.index >= total - 1;
+    turnReaderState.turns.forEach((_, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.index = String(index);
+      button.className = 'kcg-turn-reader-dot';
+      button.title = `第 ${index + 1} 轮`;
+      button.setAttribute('aria-label', `第 ${index + 1} 轮`);
+      button.toggleAttribute('aria-current', index === turnReaderState.index);
+      button.classList.toggle('kcg-turn-reader-dot-active', index === turnReaderState.index);
+      fragment.appendChild(button);
+    });
+
+    controls.replaceChildren(fragment);
+    controls.scrollTop = previousScrollTop;
+
+    const active = $('.kcg-turn-reader-dot-active', controls);
+    if (active) {
+      const controlsRect = controls.getBoundingClientRect();
+      const activeRect = active.getBoundingClientRect();
+      if (activeRect.top < controlsRect.top) {
+        controls.scrollTop -= controlsRect.top - activeRect.top;
+      } else if (activeRect.bottom > controlsRect.bottom) {
+        controls.scrollTop += activeRect.bottom - controlsRect.bottom;
+      }
+    }
   };
 
   const clearTurnReaderVisibility = () => {
     $$('.kcg-turn-hidden').forEach((message) => message.classList.remove('kcg-turn-hidden'));
   };
 
-  const getTurnVisibilityNode = (message) => {
-    let node = message;
+  const getTurnScrollOffset = () => {
+    const header = $('header.sticky, header');
+    const headerHeight = header?.getBoundingClientRect?.().height || 0;
+    return Math.max(64, Math.min(140, headerHeight + 24));
+  };
 
-    while (node.parentElement && !node.parentElement.matches?.('main')) {
-      const parent = node.parentElement;
-      const messageRoles = parent.querySelectorAll(messageRoleSelector);
-      if (messageRoles.length !== 1 || messageRoles[0] !== message) break;
-      node = parent;
-    }
+  const scrollTurnIntoView = (turn) => {
+    const message = turn?.messages.find((node) => node.isConnected);
+    const visibilityNode = message ? getTurnVisibilityNode(message) : null;
+    const node = visibilityNode?.isConnected ? visibilityNode : message;
+    if (!node?.isConnected) return;
 
-    return node;
+    const rect = node.getBoundingClientRect();
+    const top = Math.max(0, rect.top + window.scrollY - getTurnScrollOffset());
+    window.scrollTo({ top, behavior: 'auto' });
   };
 
   const applyTurnReaderVisibility = (scrollActive = false) => {
@@ -741,13 +816,17 @@
     document.body.classList.toggle('kcg-turn-reader-active', turnReaderState.turns.length > 0);
     syncTurnReaderControls();
 
-    if (scrollActive && activeTurn?.messages[0]?.isConnected) {
-      activeTurn.messages[0].scrollIntoView({ block: 'start' });
+    if (scrollActive && activeTurn) {
+      const activeKey = activeTurn.key;
+      window.requestAnimationFrame(() => {
+        if (turnReaderState.selectedKey === activeKey) scrollTurnIntoView(activeTurn);
+      });
     }
   };
 
   function setTurnReaderIndex(index, scrollActive = false) {
     turnReaderState.index = clampTurnIndex(index, turnReaderState.turns);
+    turnReaderState.selectedKey = turnReaderState.turns[turnReaderState.index]?.key || '';
     clearLocalTurnReaderSendIntent();
     applyTurnReaderVisibility(scrollActive);
   }
@@ -755,8 +834,7 @@
   const rebuildTurnReader = ({ forceLatest = false, scrollActive = false } = {}) => {
     if (!getValue('k_turnreader', false)) return;
 
-    const previousTurn = turnReaderState.turns[turnReaderState.index];
-    const previousAnchor = previousTurn?.messages[0] || null;
+    const previousKey = turnReaderState.selectedKey;
     const route = getTurnReaderRoute();
     const routeChanged = turnReaderState.route !== route;
     const turns = buildConversationTurns();
@@ -770,6 +848,7 @@
 
     if (!turns.length) {
       turnReaderState.index = -1;
+      turnReaderState.selectedKey = '';
       clearTurnReaderVisibility();
       syncTurnReaderControls();
       return;
@@ -780,12 +859,13 @@
       nextIndex = turns.length - 1;
     } else if (routeChanged) {
       nextIndex = 0;
-    } else if (previousAnchor) {
-      nextIndex = turns.findIndex((turn) => turn.messages.includes(previousAnchor));
+    } else if (previousKey) {
+      nextIndex = turns.findIndex((turn) => turn.key === previousKey);
     }
 
     if (nextIndex < 0) nextIndex = turnReaderState.index;
     turnReaderState.index = clampTurnIndex(nextIndex, turns);
+    turnReaderState.selectedKey = turns[turnReaderState.index]?.key || '';
     applyTurnReaderVisibility(scrollActive && forceLatest);
   };
 
@@ -1535,6 +1615,7 @@
     document.body.classList.remove('kcg-turn-reader-active');
     turnReaderState.turns = [];
     turnReaderState.index = -1;
+    turnReaderState.selectedKey = '';
     clearLocalTurnReaderSendIntent();
     turnReaderState.route = '';
   };
@@ -1799,41 +1880,63 @@
             }
             .kcg-turn-reader {
                 position: fixed;
-                left: 50%;
-                bottom: 5.25rem;
-                transform: translateX(-50%);
+                right: max(1rem, env(safe-area-inset-right));
+                top: 50%;
+                transform: translateY(-50%);
                 z-index: 2147483000;
                 display: none;
+                flex-direction: column;
                 align-items: center;
-                gap: .5rem;
-                padding: .4rem;
-                border: 1px solid rgba(0,0,0,.12);
-                border-radius: .6rem;
-                background: var(--main-surface-primary, #fff);
-                color: var(--text-primary, #111);
-                box-shadow: 0 8px 24px rgba(0,0,0,.14);
+                gap: .28rem;
+                max-height: min(26rem, 62vh);
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                padding: .35rem .25rem;
+                border-radius: .55rem;
+                background: rgba(0,0,0,.62);
+                box-shadow: 0 8px 24px rgba(0,0,0,.2);
+                scrollbar-width: none;
+            }
+            .kcg-turn-reader::-webkit-scrollbar {
+                display: none;
             }
             .kcg-turn-reader-active .kcg-turn-reader {
                 display: flex;
             }
             .kcg-turn-reader button {
-                border: 1px solid rgba(0,0,0,.12);
-                border-radius: .45rem;
-                padding: .35rem .65rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 2rem;
+                height: .55rem;
+                border: 0;
+                border-radius: 999px;
+                padding: 0;
                 background: transparent;
-                color: inherit;
-                font-size: .8rem;
                 cursor: pointer;
             }
-            .kcg-turn-reader button:disabled {
-                cursor: default;
-                opacity: .45;
+            .kcg-turn-reader button::before {
+                content: "";
+                display: block;
+                width: 1rem;
+                height: 2px;
+                border-radius: 999px;
+                background: rgba(255,255,255,.48);
+                transition: width .12s ease, height .12s ease, background .12s ease;
             }
-            .kcg-turn-reader-count {
-                min-width: 4rem;
-                text-align: center;
-                color: var(--text-secondary, #666);
-                font-size: .8rem;
+            .kcg-turn-reader button:hover::before,
+            .kcg-turn-reader button:focus-visible::before {
+                width: 1.35rem;
+                background: rgba(255,255,255,.86);
+            }
+            .kcg-turn-reader button:focus-visible {
+                outline: 2px solid rgba(16,163,127,.75);
+                outline-offset: 2px;
+            }
+            .kcg-turn-reader .kcg-turn-reader-dot-active::before {
+                width: 1.45rem;
+                height: 3px;
+                background: #10a37f;
             }
             .kcg-wide section.text-token-text-primary > div > div,
             .kcg-wide #thread-bottom > div > div > div {
