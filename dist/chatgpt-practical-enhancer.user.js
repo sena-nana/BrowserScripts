@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ChatGPT 实用增强
 // @namespace   https://github.com/wangjunxue/BrowserScripts
-// @version     35.1.5-clean
+// @version     35.1.6-clean
 // @description 保持会话、阻止跟踪、敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用我的消息、长对话单轮显示、侧边栏摘要。
 // @match       https://chatgpt.com/*
 // @match       https://chat.openai.com/*
@@ -589,32 +589,57 @@
       }
       return node;
     };
+    const getConversationTurnIndex = (node) => {
+      const testId = node?.getAttribute?.("data-testid") || "";
+      const match = testId.match(/^conversation-turn-(\d+)$/);
+      return match ? Number(match[1]) : null;
+    };
+    const getConversationTurnUnit = (message, order) => {
+      const section = message.closest?.('[data-testid^="conversation-turn-"]');
+      const container = section || message;
+      const messages = section ? $$(messageRoleSelector, section).filter((node) => node.closest?.('[data-testid^="conversation-turn-"]') === section) : [message];
+      return {
+        container,
+        index: getConversationTurnIndex(section),
+        messages,
+        order,
+        role: messages[0]?.getAttribute("data-message-author-role") || ""
+      };
+    };
+    const canAppendAssistantUnit = (current, unit) => {
+      if (!current?.startsWithUser) return false;
+      if (current.lastUnitIndex !== null && unit.index !== null) {
+        return unit.index === current.lastUnitIndex + 1;
+      }
+      return true;
+    };
     const buildConversationTurns = () => {
       const turns = [];
+      const seenContainers = /* @__PURE__ */ new Set();
       const seenKeys = /* @__PURE__ */ new Map();
       let current = null;
       $$(messageSelector).forEach((message, order) => {
-        const role = message.getAttribute("data-message-author-role");
+        const unit = getConversationTurnUnit(message, order);
+        if (seenContainers.has(unit.container)) return;
+        seenContainers.add(unit.container);
+        const role = unit.role;
         if (role !== "user" && role !== "assistant") return;
         if (role === "user") {
           current = {
-            key: getTurnKey(message, order, seenKeys),
-            messages: [message],
+            key: getTurnKey(unit.messages[0], unit.order, seenKeys),
+            lastUnitIndex: unit.index,
+            messages: [...unit.messages],
             startsWithUser: true
           };
           turns.push(current);
           return;
         }
-        if (current?.startsWithUser) {
-          current.messages.push(message);
+        if (canAppendAssistantUnit(current, unit)) {
+          current.messages.push(...unit.messages);
+          current.lastUnitIndex = unit.index;
           return;
         }
-        current = {
-          key: getTurnKey(message, order, seenKeys),
-          messages: [message],
-          startsWithUser: false
-        };
-        turns.push(current);
+        current = null;
       });
       return turns;
     };

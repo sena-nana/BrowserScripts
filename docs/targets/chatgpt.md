@@ -19,6 +19,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 - `main div[data-message-author-role="user"]`
 - `main [data-message-author-role="assistant"]`
 - `main [data-message-author-role]`
+- `main [data-testid^="conversation-turn-"]`
 - `a[href*="/c/"]`
 
 ## Fragile Selectors
@@ -26,7 +27,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 - `form.w-full #prompt-textarea`
 - `nav.flex:not(#stage-sidebar-tiny-bar)`
 - Width and home-cleanup selectors that depend on ChatGPT class names.
-- Single-turn display depends on `data-message-author-role` message nodes to split user/assistant turns.
+- Single-turn display depends on `conversation-turn-N` sections plus `data-message-author-role` message nodes to split user/assistant turns.
 
 ## Required Permissions
 
@@ -53,7 +54,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 - Do not mount custom controls inside ChatGPT's React-managed sidebar navigation; it can cause hydration recovery loops.
 - Sidebar history metadata must be decorated only after page load, not during initial React hydration.
 - ChatGPT history response shapes can change, which may affect sidebar summaries.
-- Single-turn display groups turns by `data-message-author-role` and rebuilds the turn model from current DOM; if ChatGPT changes message role attributes, the performance mode needs selector review.
+- Single-turn display groups turns by `conversation-turn-N` sections and `data-message-author-role`; if ChatGPT changes either attribute, the performance mode needs selector review.
 
 ## Last Verified
 

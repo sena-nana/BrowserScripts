@@ -1,6 +1,6 @@
 {
   "name": "@browserscripts/chatgpt-practical-enhancer",
-  "version": "35.1.5-clean",
+  "version": "35.1.6-clean",
   "private": true,
   "type": "module",
   "dependencies": {
