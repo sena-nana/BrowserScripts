@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ChatGPT 实用增强
 // @namespace   https://github.com/wangjunxue/BrowserScripts
-// @version     35.1.1-clean
+// @version     35.1.4-clean
 // @description 保持会话、阻止跟踪、敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用我的消息、长对话单轮显示、侧边栏摘要。
 // @match       https://chatgpt.com/*
 // @match       https://chat.openai.com/*
@@ -623,6 +623,29 @@
       if (!turns.length) return -1;
       return Math.min(Math.max(index, 0), turns.length - 1);
     };
+    const getTurnBaseKey = (key) => String(key || "").replace(/#\d+$/, "");
+    const hasSameTurnKey = (left, right) => Boolean(left && right && getTurnBaseKey(left) === getTurnBaseKey(right));
+    const findTurnIndexByKey = (turns, key) => turns.findIndex((turn) => hasSameTurnKey(turn.key, key));
+    const findTurnByKey = (turns, key) => turns.find((turn) => hasSameTurnKey(turn.key, key));
+    const toTurnReaderItem = (turn) => ({ key: getTurnBaseKey(turn.key) });
+    const mergeKnownTurns = (currentTurns) => {
+      if (!turnReaderState.turns.length) return currentTurns.map(toTurnReaderItem);
+      const merged = [...turnReaderState.turns];
+      let anchor = -1;
+      for (const current of currentTurns) {
+        const item = toTurnReaderItem(current);
+        const existing = findTurnIndexByKey(merged, item.key);
+        if (existing >= 0) {
+          merged[existing] = item;
+          anchor = existing;
+          continue;
+        }
+        const insertAt = anchor >= 0 ? anchor + 1 : merged.length;
+        merged.splice(insertAt, 0, item);
+        anchor = insertAt;
+      }
+      return merged;
+    };
     const ensureTurnReaderControls = () => {
       let controls = $("#kcg-turn-reader");
       if (controls) return controls;
@@ -669,42 +692,80 @@
     };
     const clearTurnReaderVisibility = () => {
       $$(".kcg-turn-hidden").forEach((message) => message.classList.remove("kcg-turn-hidden"));
+      $$(".kcg-turn-active").forEach((message) => message.classList.remove("kcg-turn-active"));
+      $$(".kcg-turn-active-tail").forEach((message) => message.classList.remove("kcg-turn-active-tail"));
     };
     const getTurnScrollOffset = () => {
       const header = $("header.sticky, header");
       const headerHeight = header?.getBoundingClientRect?.().height || 0;
       return Math.max(64, Math.min(140, headerHeight + 24));
     };
+    const getTurnScrollContainer = (node) => {
+      let parent = node.parentElement;
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent);
+        if (/(auto|scroll|overlay)/.test(style.overflowY) && parent.scrollHeight > parent.clientHeight + 1) {
+          return parent;
+        }
+        parent = parent.parentElement;
+      }
+      return document.scrollingElement || document.documentElement;
+    };
     const scrollTurnIntoView = (turn) => {
       const message = turn?.messages.find((node2) => node2.isConnected);
       const visibilityNode = message ? getTurnVisibilityNode(message) : null;
       const node = visibilityNode?.isConnected ? visibilityNode : message;
       if (!node?.isConnected) return;
+      const container = getTurnScrollContainer(node);
       const rect = node.getBoundingClientRect();
-      const top = Math.max(0, rect.top + window.scrollY - getTurnScrollOffset());
-      window.scrollTo({ top, behavior: "auto" });
+      const offset = getTurnScrollOffset();
+      if (container === document.scrollingElement || container === document.documentElement) {
+        const top2 = Math.max(0, rect.top + window.scrollY - offset);
+        window.scrollTo({ top: top2, behavior: "auto" });
+        return;
+      }
+      const containerRect = container.getBoundingClientRect();
+      const top = Math.max(0, container.scrollTop + rect.top - containerRect.top - offset);
+      container.scrollTo({ top, behavior: "auto" });
     };
-    const applyTurnReaderVisibility = (scrollActive = false) => {
+    const applyTurnReaderVisibility = (scrollActive = false, currentTurns = buildConversationTurns()) => {
       if (!getValue("k_turnreader", false)) return;
-      const activeTurn = turnReaderState.turns[turnReaderState.index];
-      const activeMessages = new Set(activeTurn?.messages || []);
-      const knownVisibilityNodes = /* @__PURE__ */ new Set();
-      for (const turn of turnReaderState.turns) {
-        for (const message of turn.messages) {
-          const visibilityNode = getTurnVisibilityNode(message);
-          knownVisibilityNodes.add(visibilityNode);
-          visibilityNode.classList.toggle("kcg-turn-hidden", !activeMessages.has(message));
-        }
+      const selectedKey = turnReaderState.selectedKey;
+      const activeTurn = findTurnByKey(currentTurns, selectedKey);
+      const activeVisibilityList = (activeTurn?.messages || []).filter((message) => message.isConnected).map(getTurnVisibilityNode);
+      const activeVisibilityNodes = new Set(activeVisibilityList);
+      const activeTail = activeVisibilityList[activeVisibilityList.length - 1] || null;
+      const currentVisibilityNodes = /* @__PURE__ */ new Set();
+      if (!activeVisibilityNodes.size) {
+        document.body.classList.toggle("kcg-turn-reader-active", turnReaderState.turns.length > 0);
+        syncTurnReaderControls();
+        return;
+      }
+      for (const message of $$(messageSelector)) {
+        const visibilityNode = getTurnVisibilityNode(message);
+        const active = activeVisibilityNodes.has(visibilityNode);
+        currentVisibilityNodes.add(visibilityNode);
+        visibilityNode.classList.toggle("kcg-turn-hidden", !active);
+        visibilityNode.classList.toggle("kcg-turn-active", active);
+        visibilityNode.classList.toggle("kcg-turn-active-tail", visibilityNode === activeTail);
       }
       $$(".kcg-turn-hidden").forEach((node) => {
-        if (!knownVisibilityNodes.has(node)) node.classList.remove("kcg-turn-hidden");
+        if (!currentVisibilityNodes.has(node)) node.classList.remove("kcg-turn-hidden");
+      });
+      $$(".kcg-turn-active").forEach((node) => {
+        if (!currentVisibilityNodes.has(node) || !activeVisibilityNodes.has(node)) {
+          node.classList.remove("kcg-turn-active");
+        }
+      });
+      $$(".kcg-turn-active-tail").forEach((node) => {
+        if (node !== activeTail) node.classList.remove("kcg-turn-active-tail");
       });
       document.body.classList.toggle("kcg-turn-reader-active", turnReaderState.turns.length > 0);
       syncTurnReaderControls();
-      if (scrollActive && activeTurn) {
-        const activeKey = activeTurn.key;
+      if (scrollActive) {
+        const activeKey = selectedKey;
         window.requestAnimationFrame(() => {
-          if (turnReaderState.selectedKey === activeKey) scrollTurnIntoView(activeTurn);
+          if (hasSameTurnKey(turnReaderState.selectedKey, activeKey)) scrollTurnIntoView(activeTurn);
         });
       }
     };
@@ -719,7 +780,8 @@
       const previousKey = turnReaderState.selectedKey;
       const route = getTurnReaderRoute();
       const routeChanged = turnReaderState.route !== route;
-      const turns = buildConversationTurns();
+      const currentTurns = buildConversationTurns();
+      const turns = routeChanged ? currentTurns.map(toTurnReaderItem) : mergeKnownTurns(currentTurns);
       turnReaderState.route = route;
       turnReaderState.turns = turns;
       if (routeChanged && !forceLatest) {
@@ -738,12 +800,12 @@
       } else if (routeChanged) {
         nextIndex = 0;
       } else if (previousKey) {
-        nextIndex = turns.findIndex((turn) => turn.key === previousKey);
+        nextIndex = findTurnIndexByKey(turns, previousKey);
       }
       if (nextIndex < 0) nextIndex = turnReaderState.index;
       turnReaderState.index = clampTurnIndex(nextIndex, turns);
       turnReaderState.selectedKey = turns[turnReaderState.index]?.key || "";
-      applyTurnReaderVisibility(scrollActive && forceLatest);
+      applyTurnReaderVisibility(scrollActive || routeChanged, currentTurns);
     };
     const scheduleTurnReaderRebuild = debounce((forceLatest = false) => {
       rebuildTurnReader({ forceLatest, scrollActive: forceLatest });
@@ -1593,6 +1655,9 @@
             }
             .kcg-turn-hidden {
                 display: none !important;
+            }
+            .kcg-turn-reader-active .kcg-turn-active-tail {
+                min-height: min(32rem, calc(100vh - 12rem));
             }
             .kcg-turn-reader {
                 position: fixed;
