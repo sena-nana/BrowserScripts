@@ -2038,7 +2038,8 @@
                 display: none !important;
             }
             .kcg-turn-reader-active .kcg-turn-active-tail {
-                min-height: min(32rem, calc(100vh - 12rem));
+                min-height: max(32rem, calc(100vh + 1px));
+                overflow-anchor: none;
             }
             .kcg-turn-reader {
                 position: fixed;
