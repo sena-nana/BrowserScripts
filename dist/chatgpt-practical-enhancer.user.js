@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ChatGPT 实用增强
 // @namespace   https://github.com/wangjunxue/BrowserScripts
-// @version     35.1.9-clean
+// @version     35.2.0-clean
 // @description 保持会话、阻止跟踪、敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用我的消息、长对话单轮显示、侧边栏摘要。
 // @match       https://chatgpt.com/*
 // @match       https://chat.openai.com/*
@@ -718,7 +718,10 @@
       }
     };
     const clearTurnReaderVisibility = () => {
-      $$(".kcg-turn-hidden").forEach((message) => message.classList.remove("kcg-turn-hidden"));
+      $$(".kcg-turn-hidden").forEach((message) => {
+        message.classList.remove("kcg-turn-hidden");
+        message.style.removeProperty("--kcg-turn-height");
+      });
       $$(".kcg-turn-active").forEach((message) => message.classList.remove("kcg-turn-active"));
       $$(".kcg-turn-active-tail").forEach((message) => message.classList.remove("kcg-turn-active-tail"));
     };
@@ -771,14 +774,24 @@
       }
       for (const message of $$(messageSelector)) {
         const visibilityNode = getTurnVisibilityNode(message);
+        if (currentVisibilityNodes.has(visibilityNode)) continue;
         const active = activeVisibilityNodes.has(visibilityNode);
         currentVisibilityNodes.add(visibilityNode);
+        if (active) {
+          visibilityNode.style.removeProperty("--kcg-turn-height");
+        } else {
+          const height = visibilityNode.getBoundingClientRect?.().height || 0;
+          if (height > 0) visibilityNode.style.setProperty("--kcg-turn-height", `${Math.ceil(height)}px`);
+        }
         visibilityNode.classList.toggle("kcg-turn-hidden", !active);
         visibilityNode.classList.toggle("kcg-turn-active", active);
         visibilityNode.classList.toggle("kcg-turn-active-tail", visibilityNode === activeTail);
       }
       $$(".kcg-turn-hidden").forEach((node) => {
-        if (!currentVisibilityNodes.has(node)) node.classList.remove("kcg-turn-hidden");
+        if (!currentVisibilityNodes.has(node)) {
+          node.classList.remove("kcg-turn-hidden");
+          node.style.removeProperty("--kcg-turn-height");
+        }
       });
       $$(".kcg-turn-active").forEach((node) => {
         if (!currentVisibilityNodes.has(node) || !activeVisibilityNodes.has(node)) {
@@ -1697,7 +1710,12 @@
                 font-size: .86rem;
             }
             .kcg-turn-hidden {
-                display: none !important;
+                min-height: var(--kcg-turn-height, 1px) !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+                user-select: none !important;
+                overflow: hidden !important;
+                overflow-anchor: none;
             }
             .kcg-turn-reader-active .kcg-turn-active-tail {
                 min-height: max(32rem, calc(100vh + 1px));
