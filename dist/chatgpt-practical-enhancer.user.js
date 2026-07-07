@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ChatGPT 实用增强
 // @namespace   https://github.com/wangjunxue/BrowserScripts
-// @version     35.1.4-clean
+// @version     35.1.5-clean
 // @description 保持会话、阻止跟踪、敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用我的消息、长对话单轮显示、侧边栏摘要。
 // @match       https://chatgpt.com/*
 // @match       https://chat.openai.com/*
@@ -717,6 +717,7 @@
       const node = visibilityNode?.isConnected ? visibilityNode : message;
       if (!node?.isConnected) return;
       const container = getTurnScrollContainer(node);
+      if (container.scrollHeight <= container.clientHeight + 1) return;
       const rect = node.getBoundingClientRect();
       const offset = getTurnScrollOffset();
       if (container === document.scrollingElement || container === document.documentElement) {
@@ -781,6 +782,11 @@
       const route = getTurnReaderRoute();
       const routeChanged = turnReaderState.route !== route;
       const currentTurns = buildConversationTurns();
+      if (!routeChanged && !currentTurns.length && turnReaderState.turns.length) {
+        document.body.classList.toggle("kcg-turn-reader-active", true);
+        syncTurnReaderControls();
+        return;
+      }
       const turns = routeChanged ? currentTurns.map(toTurnReaderItem) : mergeKnownTurns(currentTurns);
       turnReaderState.route = route;
       turnReaderState.turns = turns;
