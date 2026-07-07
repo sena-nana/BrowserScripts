@@ -838,6 +838,8 @@
     if (!node?.isConnected) return;
 
     const container = getTurnScrollContainer(node);
+    if (container.scrollHeight <= container.clientHeight + 1) return;
+
     const rect = node.getBoundingClientRect();
     const offset = getTurnScrollOffset();
 
@@ -916,6 +918,12 @@
     const route = getTurnReaderRoute();
     const routeChanged = turnReaderState.route !== route;
     const currentTurns = buildConversationTurns();
+    if (!routeChanged && !currentTurns.length && turnReaderState.turns.length) {
+      document.body.classList.toggle('kcg-turn-reader-active', true);
+      syncTurnReaderControls();
+      return;
+    }
+
     const turns = routeChanged ? currentTurns.map(toTurnReaderItem) : mergeKnownTurns(currentTurns);
 
     turnReaderState.route = route;
