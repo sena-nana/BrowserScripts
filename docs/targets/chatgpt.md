@@ -28,6 +28,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 - `nav.flex:not(#stage-sidebar-tiny-bar)`
 - Width and home-cleanup selectors that depend on ChatGPT class names.
 - Single-turn display depends on `conversation-turn-N` sections plus `data-message-author-role` message nodes to split user/assistant turns.
+- Single-turn display must preserve hidden turn layout height instead of using `display: none`; collapsing the page height can trigger ChatGPT's virtual list to mount more content repeatedly.
 
 ## Required Permissions
 
@@ -46,7 +47,8 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 5. Disable keep-alive and confirm session polling stops.
 6. Toggle one option, refresh, and confirm the option state persists.
 7. Enable single-turn display in a long conversation and confirm the right-side short-line navigator switches between complete conversation turns.
-8. Check DevTools for runtime errors if ChatGPT changes selectors.
+8. In a conversation where the selected turn is shorter than the viewport, confirm the page does not repeatedly flash, clear messages, or change navigator counts.
+9. Check DevTools for runtime errors if ChatGPT changes selectors.
 
 ## Known Breakage Points
 
@@ -55,6 +57,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 - Sidebar history metadata must be decorated only after page load, not during initial React hydration.
 - ChatGPT history response shapes can change, which may affect sidebar summaries.
 - Single-turn display groups turns by `conversation-turn-N` sections and `data-message-author-role`; if ChatGPT changes either attribute, the performance mode needs selector review.
+- Hidden turns intentionally keep placeholder height to avoid virtual-list underfill loops; do not replace this with `display: none` without re-testing short selected turns.
 
 ## Last Verified
 
