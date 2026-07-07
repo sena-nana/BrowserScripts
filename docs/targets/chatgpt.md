@@ -39,7 +39,7 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 ## Debug Steps
 
 1. Confirm the current URL matches `https://chatgpt.com/*` or `https://chat.openai.com/*`.
-2. Confirm the `增强` entry is mounted in the sidebar or as a lower-left floating button.
+2. Confirm the `增强` entry is mounted as a lower-left floating button outside ChatGPT's sidebar navigation.
 3. Confirm keep-alive is disabled by default; enable it and verify `/api/auth/session` polling starts.
 4. Change the keep-alive interval, refresh, and confirm the interval persists.
 5. Disable keep-alive and confirm session polling stops.
@@ -50,6 +50,8 @@ ChatGPT is a single-page app. The script binds idempotently on DOM mutations ins
 ## Known Breakage Points
 
 - ChatGPT DOM class names and prompt/sidebar selectors change often.
+- Do not mount custom controls inside ChatGPT's React-managed sidebar navigation; it can cause hydration recovery loops.
+- Sidebar history metadata must be decorated only after page load, not during initial React hydration.
 - ChatGPT history response shapes can change, which may affect sidebar summaries.
 - Single-turn display groups turns by `data-message-author-role` and rebuilds the turn model from current DOM; if ChatGPT changes message role attributes, the performance mode needs selector review.
 
