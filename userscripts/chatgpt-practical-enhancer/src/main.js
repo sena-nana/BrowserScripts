@@ -955,7 +955,14 @@
     const currentTurns = buildConversationTurns();
     const hasCurrentMessages = Boolean($(messageSelector));
     if (!currentTurns.length && hasCurrentMessages) {
-      if (turnReaderState.turns.length) {
+      if (routeChanged) {
+        turnReaderState.route = route;
+        turnReaderState.turns = [];
+        turnReaderState.index = -1;
+        turnReaderState.selectedKey = '';
+        clearTurnReaderVisibility();
+        syncTurnReaderControls();
+      } else if (turnReaderState.turns.length) {
         document.body.classList.toggle('kcg-turn-reader-active', true);
         syncTurnReaderControls();
       }

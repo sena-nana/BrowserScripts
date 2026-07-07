@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ChatGPT 实用增强
 // @namespace   https://github.com/wangjunxue/BrowserScripts
-// @version     35.1.7-clean
+// @version     35.1.8-clean
 // @description 保持会话、阻止跟踪、敏感内容脱敏、宽屏阅读、精简首页、自动继续生成、复用我的消息、长对话单轮显示、侧边栏摘要。
 // @match       https://chatgpt.com/*
 // @match       https://chat.openai.com/*
@@ -811,7 +811,14 @@
       const currentTurns = buildConversationTurns();
       const hasCurrentMessages = Boolean($(messageSelector));
       if (!currentTurns.length && hasCurrentMessages) {
-        if (turnReaderState.turns.length) {
+        if (routeChanged) {
+          turnReaderState.route = route;
+          turnReaderState.turns = [];
+          turnReaderState.index = -1;
+          turnReaderState.selectedKey = "";
+          clearTurnReaderVisibility();
+          syncTurnReaderControls();
+        } else if (turnReaderState.turns.length) {
           document.body.classList.toggle("kcg-turn-reader-active", true);
           syncTurnReaderControls();
         }
