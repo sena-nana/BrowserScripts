@@ -291,10 +291,12 @@
       return { text: output, matches };
     };
     let composingPrompt = false;
+    const localSendIntentMs = 8e3;
     const bindSensitiveScanner = () => {
       const prompt = $(promptSelector);
       if (!prompt || prompt.dataset.kcgSensitiveBound === "true") return;
       prompt.dataset.kcgSensitiveBound = "true";
+      const form = prompt.closest("form");
       const scan = () => {
         if (composingPrompt) return;
         const result = sanitizeText(getPromptText(prompt));
@@ -305,6 +307,11 @@
       const scanSoon = debounce(scan, 120);
       prompt.addEventListener("input", scanSoon);
       prompt.addEventListener("paste", () => setTimeout(scan, 0));
+      prompt.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey && !composingPrompt) {
+          noteLocalTurnReaderSend();
+        }
+      });
       prompt.addEventListener("compositionstart", () => {
         composingPrompt = true;
       });
@@ -312,6 +319,10 @@
         composingPrompt = false;
         scanSoon();
       });
+      if (form && form.dataset.kcgTurnSendBound !== "true") {
+        form.dataset.kcgTurnSendBound = "true";
+        form.addEventListener("submit", noteLocalTurnReaderSend, true);
+      }
     };
     const showDialog = ({ title, body, inputType, value, content, focusSelector, onSave }) => {
       const overlay = document.createElement("div");
@@ -536,9 +547,19 @@
     const turnReaderState = {
       turns: [],
       index: -1,
-      followLatest: true,
+      followLatestAfterSend: false,
+      localSendPendingUntil: 0,
       route: ""
     };
+    function clearLocalTurnReaderSendIntent() {
+      turnReaderState.followLatestAfterSend = false;
+      turnReaderState.localSendPendingUntil = 0;
+    }
+    function noteLocalTurnReaderSend() {
+      if (!getValue("k_turnreader", false)) return;
+      turnReaderState.followLatestAfterSend = true;
+      turnReaderState.localSendPendingUntil = Date.now() + localSendIntentMs;
+    }
     const buildConversationTurns = () => {
       const turns = [];
       let current = null;
@@ -630,39 +651,41 @@
     };
     function setTurnReaderIndex(index, scrollActive = false) {
       turnReaderState.index = clampTurnIndex(index, turnReaderState.turns);
-      turnReaderState.followLatest = turnReaderState.index >= 0 && turnReaderState.index >= turnReaderState.turns.length - 1;
+      clearLocalTurnReaderSendIntent();
       applyTurnReaderVisibility(scrollActive);
     }
     const rebuildTurnReader = ({ forceLatest = false, scrollActive = false } = {}) => {
       if (!getValue("k_turnreader", false)) return;
       const previousTurn = turnReaderState.turns[turnReaderState.index];
       const previousAnchor = previousTurn?.messages[0] || null;
-      const previousFollowLatest = turnReaderState.followLatest;
       const route = getTurnReaderRoute();
       const routeChanged = turnReaderState.route !== route;
       const turns = buildConversationTurns();
       turnReaderState.route = route;
       turnReaderState.turns = turns;
+      if (routeChanged && !forceLatest) {
+        clearLocalTurnReaderSendIntent();
+      }
       if (!turns.length) {
         turnReaderState.index = -1;
-        turnReaderState.followLatest = true;
         clearTurnReaderVisibility();
         syncTurnReaderControls();
         return;
       }
       let nextIndex = -1;
-      if (forceLatest || routeChanged || previousFollowLatest) {
+      if (forceLatest) {
         nextIndex = turns.length - 1;
+      } else if (routeChanged) {
+        nextIndex = 0;
       } else if (previousAnchor) {
         nextIndex = turns.findIndex((turn) => turn.messages.includes(previousAnchor));
       }
       if (nextIndex < 0) nextIndex = turnReaderState.index;
       turnReaderState.index = clampTurnIndex(nextIndex, turns);
-      turnReaderState.followLatest = turnReaderState.index >= turns.length - 1;
-      applyTurnReaderVisibility(scrollActive || forceLatest || routeChanged);
+      applyTurnReaderVisibility(scrollActive && forceLatest);
     };
     const scheduleTurnReaderRebuild = debounce((forceLatest = false) => {
-      rebuildTurnReader({ forceLatest });
+      rebuildTurnReader({ forceLatest, scrollActive: forceLatest });
     }, 80);
     const hasAddedUserMessage = (mutations) => {
       for (const mutation of mutations) {
@@ -673,6 +696,16 @@
         }
       }
       return false;
+    };
+    const shouldFollowLatestForMutations = (mutations) => {
+      if (!turnReaderState.followLatestAfterSend) return false;
+      if (Date.now() > turnReaderState.localSendPendingUntil) {
+        clearLocalTurnReaderSendIntent();
+        return false;
+      }
+      if (!hasAddedUserMessage(mutations)) return false;
+      clearLocalTurnReaderSendIntent();
+      return true;
     };
     const formatHistoryTime = (value) => {
       const date = value instanceof Date ? value : new Date(value);
@@ -1224,7 +1257,7 @@
       document.body.classList.remove("kcg-turn-reader-active");
       turnReaderState.turns = [];
       turnReaderState.index = -1;
-      turnReaderState.followLatest = true;
+      clearLocalTurnReaderSendIntent();
       turnReaderState.route = "";
     };
     const setTurnReaderObserver = (enabled) => {
@@ -1242,11 +1275,11 @@
         "turn-reader",
         root,
         (mutations) => {
-          scheduleTurnReaderRebuild(turnReaderState.followLatest || hasAddedUserMessage(mutations));
+          scheduleTurnReaderRebuild(shouldFollowLatestForMutations(mutations));
         },
         { childList: true, subtree: true }
       )) {
-        rebuildTurnReader({ forceLatest: true, scrollActive: true });
+        rebuildTurnReader();
       }
     };
     const syncFeatureObservers = () => {
