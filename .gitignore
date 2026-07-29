@@ -3,5 +3,5 @@ node_modules/
 .cache/
 coverage/
 *.tsbuildinfo
-dist/*.tmp.js
-dist/*.tmp.js.map
+**/dist/*.tmp.js
+**/dist/*.tmp.js.map
