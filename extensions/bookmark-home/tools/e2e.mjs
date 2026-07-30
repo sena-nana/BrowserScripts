@@ -634,6 +634,15 @@ try {
     ),
     "rgb(61, 61, 61)",
   );
+  assert.deepEqual(
+    await page
+      .locator("#web-search-input")
+      .evaluate((element) => [
+        globalThis.getComputedStyle(element).color,
+        globalThis.getComputedStyle(element, "::placeholder").color,
+      ]),
+    ["rgb(238, 238, 238)", "rgb(170, 170, 170)"],
+  );
   await page.screenshot({
     path: path.join(screenshotsPath, "bookmark-home-dark.png"),
   });

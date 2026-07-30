@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-07-30T06:56:43.760Z",
-  "completedAt": "2026-07-30T06:56:50.176Z",
+  "startedAt": "2026-07-30T07:15:00.170Z",
+  "completedAt": "2026-07-30T07:15:07.014Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
