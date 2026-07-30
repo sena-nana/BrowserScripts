@@ -157,12 +157,12 @@ body.sidebar-collapsed #bookmark-sidebar {
 }
 
 .sidebar-header {
+  z-index: 1;
   display: flex;
   height: var(--sidebar-header-height);
   flex: 0 0 var(--sidebar-header-height);
   align-items: center;
   padding: 0 12px;
-  overflow: hidden;
 }
 
 .sidebar-title {
@@ -220,7 +220,7 @@ body.sidebar-collapsed #bookmark-sidebar {
 }
 
 .sidebar-title,
-.sidebar-header > .icon-button .icon {
+.sidebar-header > .icon-button {
   transform: translateY(4.5px);
 }
 

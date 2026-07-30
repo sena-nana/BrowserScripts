@@ -632,6 +632,7 @@ try {
     );
     const viewport = globalThis.document.querySelector("#bookmark-tree");
     const row = globalThis.document.querySelector(".tree-row");
+    const header = globalThis.document.querySelector(".sidebar-header");
     const control = globalThis.document.querySelector(
       "#toggle-bookmark-filter",
     );
@@ -643,6 +644,7 @@ try {
     if (
       !viewport ||
       !row ||
+      !header ||
       !control ||
       !controlIcon ||
       !menu ||
@@ -652,6 +654,18 @@ try {
     ) {
       throw new Error("Bookmark rows are missing");
     }
+    const center = (element) => {
+      const bounds = element.getBoundingClientRect();
+      return [bounds.left + bounds.width / 2, bounds.top + bounds.height / 2];
+    };
+    const headerCenter = center(header);
+    const controlCenter = center(control);
+    const controlIconCenter = center(controlIcon);
+    const menuBounds = menu.getBoundingClientRect();
+    const menuBottomTarget = globalThis.document.elementFromPoint(
+      menuBounds.left + menuBounds.width / 2,
+      menuBounds.bottom - 1,
+    );
     return {
       rowHeight: row.getBoundingClientRect().height,
       rowFontSize: globalThis.getComputedStyle(row).fontSize,
@@ -661,6 +675,12 @@ try {
         .trim(),
       headerControlSize: control.getBoundingClientRect().width,
       headerIconSize: controlIcon.getBoundingClientRect().width,
+      headerControlAligned:
+        controlCenter[0] === controlIconCenter[0] &&
+        controlCenter[1] === controlIconCenter[1] &&
+        controlCenter[1] === headerCenter[1] + 4.5,
+      menuBottomVisible:
+        menuBottomTarget === menu || menu.contains(menuBottomTarget),
       menuMarginRight: globalThis.getComputedStyle(menu).marginRight,
       countFontSize: globalThis.getComputedStyle(count).fontSize,
       countFontWeight: globalThis.getComputedStyle(count).fontWeight,
@@ -677,6 +697,8 @@ try {
     headerHeight: "36px",
     headerControlSize: 34,
     headerIconSize: 18,
+    headerControlAligned: true,
+    menuBottomVisible: true,
     menuMarginRight: "-2px",
     countFontSize: "18px",
     countFontWeight: "400",
