@@ -1,7 +1,11 @@
 {
   "inputs": {
+    "src/assets/folder.svg": {
+      "bytes": 103,
+      "imports": []
+    },
     "src/assets/search.svg": {
-      "bytes": 205,
+      "bytes": 216,
       "imports": []
     },
     "src/assets/add.svg": {
@@ -9,16 +13,21 @@
       "imports": []
     },
     "src/assets/menu.svg": {
-      "bytes": 225,
+      "bytes": 169,
       "imports": []
     },
-    "src/assets/settings.svg": {
-      "bytes": 418,
+    "src/assets/edit.svg": {
+      "bytes": 198,
       "imports": []
     },
     "src/styles.css": {
-      "bytes": 17362,
+      "bytes": 19295,
       "imports": [
+        {
+          "path": "src/assets/folder.svg",
+          "kind": "url-token",
+          "original": "./assets/folder.svg"
+        },
         {
           "path": "src/assets/search.svg",
           "kind": "url-token",
@@ -35,9 +44,9 @@
           "original": "./assets/menu.svg"
         },
         {
-          "path": "src/assets/settings.svg",
+          "path": "src/assets/edit.svg",
           "kind": "url-token",
-          "original": "./assets/settings.svg"
+          "original": "./assets/edit.svg"
         }
       ]
     },
@@ -68,7 +77,7 @@
       "format": "esm"
     },
     "src/bookmarks/sidebar.ts": {
-      "bytes": 14964,
+      "bytes": 15289,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -157,7 +166,7 @@
       "format": "esm"
     },
     "src/main.ts": {
-      "bytes": 7516,
+      "bytes": 7689,
       "imports": [
         {
           "path": "src/styles.css",
@@ -237,7 +246,7 @@
           "bytesInOutput": 3921
         },
         "src/bookmarks/sidebar.ts": {
-          "bytesInOutput": 7251
+          "bytesInOutput": 7374
         },
         "src/core/settings.ts": {
           "bytesInOutput": 3720
@@ -252,10 +261,10 @@
           "bytesInOutput": 1782
         },
         "src/main.ts": {
-          "bytesInOutput": 3684
+          "bytesInOutput": 3776
         }
       },
-      "bytes": 30514
+      "bytes": 30729
     },
     "dist/chunks/card-4H6TLLZZ.js": {
       "imports": [
@@ -299,15 +308,25 @@
       },
       "bytes": 7246
     },
-    "dist/assets/search-WNEL3I2P.svg": {
+    "dist/assets/folder-XLK4K2E4.svg": {
+      "imports": [],
+      "exports": [],
+      "inputs": {
+        "src/assets/folder.svg": {
+          "bytesInOutput": 103
+        }
+      },
+      "bytes": 103
+    },
+    "dist/assets/search-DJGFLJCC.svg": {
       "imports": [],
       "exports": [],
       "inputs": {
         "src/assets/search.svg": {
-          "bytesInOutput": 205
+          "bytesInOutput": 216
         }
       },
-      "bytes": 205
+      "bytes": 216
     },
     "dist/assets/add-MTNOHUXK.svg": {
       "imports": [],
@@ -319,30 +338,34 @@
       },
       "bytes": 133
     },
-    "dist/assets/menu-IHUSCX76.svg": {
+    "dist/assets/menu-TMARIZ5P.svg": {
       "imports": [],
       "exports": [],
       "inputs": {
         "src/assets/menu.svg": {
-          "bytesInOutput": 225
+          "bytesInOutput": 169
         }
       },
-      "bytes": 225
+      "bytes": 169
     },
-    "dist/assets/settings-DUHQ46J6.svg": {
+    "dist/assets/edit-QJQPIPCX.svg": {
       "imports": [],
       "exports": [],
       "inputs": {
-        "src/assets/settings.svg": {
-          "bytesInOutput": 418
+        "src/assets/edit.svg": {
+          "bytesInOutput": 198
         }
       },
-      "bytes": 418
+      "bytes": 198
     },
     "dist/main.css": {
       "imports": [
         {
-          "path": "dist/assets/search-WNEL3I2P.svg",
+          "path": "dist/assets/folder-XLK4K2E4.svg",
+          "kind": "url-token"
+        },
+        {
+          "path": "dist/assets/search-DJGFLJCC.svg",
           "kind": "url-token"
         },
         {
@@ -350,20 +373,20 @@
           "kind": "url-token"
         },
         {
-          "path": "dist/assets/menu-IHUSCX76.svg",
+          "path": "dist/assets/menu-TMARIZ5P.svg",
           "kind": "url-token"
         },
         {
-          "path": "dist/assets/settings-DUHQ46J6.svg",
+          "path": "dist/assets/edit-QJQPIPCX.svg",
           "kind": "url-token"
         }
       ],
       "inputs": {
         "src/styles.css": {
-          "bytesInOutput": 14281
+          "bytesInOutput": 15931
         }
       },
-      "bytes": 14282
+      "bytes": 15932
     }
   }
 }

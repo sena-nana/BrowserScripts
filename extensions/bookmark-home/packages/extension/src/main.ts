@@ -79,20 +79,23 @@ function bindSidebarLayout(): void {
   const closeFilter = requiredElement<HTMLButtonElement>(
     "#close-bookmark-filter",
   );
-  const tools = requiredElement<HTMLElement>(".sidebar-tools");
+  const header = requiredElement<HTMLElement>(".sidebar-header");
+  const filterPanel = requiredElement<HTMLElement>(".bookmark-filter");
   const filter = requiredElement<HTMLInputElement>("#bookmark-filter");
 
   open.addEventListener("click", () => {
     void settingsStore.updateAppearance({ sidebarCollapsed: false });
   });
   toggleFilter.addEventListener("click", () => {
-    tools.hidden = false;
+    filterPanel.hidden = false;
+    header.classList.add("is-filtering");
     filter.focus();
   });
   closeFilter.addEventListener("click", () => {
     filter.value = "";
     filter.dispatchEvent(new Event("input", { bubbles: true }));
-    tools.hidden = true;
+    header.classList.remove("is-filtering");
+    filterPanel.hidden = true;
     toggleFilter.focus();
   });
   menu.addEventListener("click", (event) => {

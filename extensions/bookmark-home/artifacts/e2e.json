@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-07-30T04:03:48.007Z",
-  "completedAt": "2026-07-30T04:03:54.182Z",
+  "startedAt": "2026-07-30T06:37:21.710Z",
+  "completedAt": "2026-07-30T06:37:27.934Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
@@ -12,6 +12,7 @@
     "live bookmark synchronization without a shortcut grid",
     "bookmark, history, and online search suggestions",
     "anchored settings card opens from both entry points",
+    "integrated sidebar bookmark filtering",
     "settings apply immediately and persist valid values",
     "local background saves immediately",
     "dark transparent preset",
@@ -26,5 +27,5 @@
     "screenshots/bookmark-home-settings.png",
     "screenshots/bookmark-home-narrow.png"
   ],
-  "passed": 17
+  "passed": 18
 }
