@@ -1,12 +1,14 @@
 export type ThemePreference = "system" | "light" | "dark";
 export type SearchProviderId = "google" | "bing" | "baidu" | "custom";
+export type SidebarDensity = "compact" | "standard" | "relaxed";
 
-export interface SettingsV2 {
-  version: 2;
+export interface SettingsV3 {
+  version: 3;
   appearance: {
     theme: ThemePreference;
     sidebarWidth: number;
     sidebarCollapsed: boolean;
+    sidebarDensity: SidebarDensity;
   };
   search: {
     provider: SearchProviderId;

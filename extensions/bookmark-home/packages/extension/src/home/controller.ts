@@ -16,10 +16,6 @@ export class HomeController {
     this.#applyBackground();
   }
 
-  preview(background: HomeBackgroundV1 | null): void {
-    this.update(background);
-  }
-
   #applyBackground(): void {
     document.body.classList.toggle(
       "has-custom-background",

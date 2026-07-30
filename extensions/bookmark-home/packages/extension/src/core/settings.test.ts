@@ -3,12 +3,11 @@ import test from "node:test";
 
 import {
   DEFAULT_SETTINGS,
-  persistHomeDraftWithRollback,
   sanitizeHomeBackground,
   sanitizeSettings,
 } from "./settings";
 
-test("SettingsV1 migration keeps valid preferences", () => {
+test("legacy settings migrate valid preferences to SettingsV3", () => {
   const settings = sanitizeSettings({
     version: 1,
     appearance: {
@@ -26,11 +25,12 @@ test("SettingsV1 migration keeps valid preferences", () => {
   });
 
   assert.deepEqual(settings, {
-    version: 2,
+    version: 3,
     appearance: {
       theme: "dark",
       sidebarWidth: 480,
       sidebarCollapsed: true,
+      sidebarDensity: "standard",
     },
     search: {
       provider: "bing",
@@ -42,12 +42,41 @@ test("SettingsV1 migration keeps valid preferences", () => {
   });
 });
 
+test("SettingsV2 migration defaults to the standard sidebar density", () => {
+  const settings = sanitizeSettings({
+    version: 2,
+    appearance: {
+      theme: "light",
+      sidebarWidth: 320,
+      sidebarCollapsed: false,
+    },
+  });
+
+  assert.equal(settings.version, 3);
+  assert.equal(settings.appearance.sidebarDensity, "standard");
+});
+
+test("SettingsV3 preserves a valid sidebar density", () => {
+  const settings = sanitizeSettings({
+    version: 3,
+    appearance: {
+      theme: "system",
+      sidebarWidth: 350,
+      sidebarCollapsed: false,
+      sidebarDensity: "relaxed",
+    },
+  });
+
+  assert.equal(settings.appearance.sidebarDensity, "relaxed");
+});
+
 test("invalid persisted values fall back to safe defaults", () => {
   const settings = sanitizeSettings({
     appearance: {
       theme: "neon",
       sidebarWidth: Number.NaN,
       sidebarCollapsed: "yes",
+      sidebarDensity: "tiny",
     },
     search: {
       provider: "unknown",
@@ -91,42 +120,4 @@ test("background rejects unsupported persisted data", () => {
     }),
     null,
   );
-});
-
-test("failed home draft persistence restores settings and background", async () => {
-  const previous = structuredClone(DEFAULT_SETTINGS);
-  const next = structuredClone(DEFAULT_SETTINGS);
-  next.search.provider = "bing";
-  const calls: string[] = [];
-  let failBackground = true;
-
-  await assert.rejects(
-    persistHomeDraftWithRollback(
-      {
-        saveSettings: (settings) => {
-          calls.push(`settings:${settings.search.provider}`);
-          return Promise.resolve();
-        },
-        saveBackground: (background) => {
-          calls.push(`background:${background ? "set" : "empty"}`);
-          if (failBackground) {
-            failBackground = false;
-            return Promise.reject(new Error("quota"));
-          }
-          return Promise.resolve();
-        },
-      },
-      next,
-      { version: 1, dataUrl: "data:image/webp;base64,AAAA", updatedAt: 2 },
-      previous,
-      null,
-    ),
-  );
-
-  assert.deepEqual(calls, [
-    "settings:bing",
-    "background:set",
-    "settings:google",
-    "background:empty",
-  ]);
 });

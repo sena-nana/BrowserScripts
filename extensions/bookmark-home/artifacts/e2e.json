@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-07-30T03:15:47.717Z",
-  "completedAt": "2026-07-30T03:15:51.037Z",
+  "startedAt": "2026-07-30T04:03:48.007Z",
+  "completedAt": "2026-07-30T04:03:54.182Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
@@ -11,10 +11,9 @@
     "confirmed bookmark deletion",
     "live bookmark synchronization without a shortcut grid",
     "bookmark, history, and online search suggestions",
-    "home editor cancel restores the persisted preview",
-    "home editor saves search settings without jump controls",
-    "search settings persist without top-right jumps",
-    "local background conversion and persistence",
+    "anchored settings card opens from both entry points",
+    "settings apply immediately and persist valid values",
+    "local background saves immediately",
     "dark transparent preset",
     "narrow internal bookmark drawer",
     "sidebar preference persistence",
@@ -24,8 +23,8 @@
   "screenshots": [
     "screenshots/bookmark-home-light.png",
     "screenshots/bookmark-home-dark.png",
-    "screenshots/bookmark-home-edit.png",
+    "screenshots/bookmark-home-settings.png",
     "screenshots/bookmark-home-narrow.png"
   ],
-  "passed": 18
+  "passed": 17
 }

@@ -12,12 +12,12 @@
       "bytes": 225,
       "imports": []
     },
-    "src/assets/edit.svg": {
-      "bytes": 177,
+    "src/assets/settings.svg": {
+      "bytes": 418,
       "imports": []
     },
     "src/styles.css": {
-      "bytes": 16741,
+      "bytes": 17362,
       "imports": [
         {
           "path": "src/assets/search.svg",
@@ -35,9 +35,9 @@
           "original": "./assets/menu.svg"
         },
         {
-          "path": "src/assets/edit.svg",
+          "path": "src/assets/settings.svg",
           "kind": "url-token",
-          "original": "./assets/edit.svg"
+          "original": "./assets/settings.svg"
         }
       ]
     },
@@ -47,7 +47,7 @@
       "format": "esm"
     },
     "src/core/i18n.ts": {
-      "bytes": 5181,
+      "bytes": 5402,
       "imports": [],
       "format": "esm"
     },
@@ -68,7 +68,7 @@
       "format": "esm"
     },
     "src/bookmarks/sidebar.ts": {
-      "bytes": 14497,
+      "bytes": 14964,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -89,12 +89,12 @@
       "format": "esm"
     },
     "src/core/settings.ts": {
-      "bytes": 8993,
+      "bytes": 8405,
       "imports": [],
       "format": "esm"
     },
     "src/home/controller.ts": {
-      "bytes": 821,
+      "bytes": 732,
       "imports": [],
       "format": "esm"
     },
@@ -130,24 +130,13 @@
       ],
       "format": "esm"
     },
-    "src/settings/drawer.ts": {
-      "bytes": 4055,
-      "imports": [
-        {
-          "path": "src/core/i18n.ts",
-          "kind": "import-statement",
-          "original": "../core/i18n"
-        }
-      ],
-      "format": "esm"
-    },
     "src/home/background.ts": {
       "bytes": 2317,
       "imports": [],
       "format": "esm"
     },
-    "src/home/editor.ts": {
-      "bytes": 7089,
+    "src/settings/card.ts": {
+      "bytes": 12314,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -155,20 +144,20 @@
           "original": "../core/i18n"
         },
         {
+          "path": "src/home/background.ts",
+          "kind": "import-statement",
+          "original": "../home/background"
+        },
+        {
           "path": "src/search/providers.ts",
           "kind": "import-statement",
           "original": "../search/providers"
-        },
-        {
-          "path": "src/home/background.ts",
-          "kind": "import-statement",
-          "original": "./background"
         }
       ],
       "format": "esm"
     },
     "src/main.ts": {
-      "bytes": 7347,
+      "bytes": 7516,
       "imports": [
         {
           "path": "src/styles.css",
@@ -211,14 +200,9 @@
           "original": "./search/suggestion-engine"
         },
         {
-          "path": "src/settings/drawer.ts",
+          "path": "src/settings/card.ts",
           "kind": "dynamic-import",
-          "original": "./settings/drawer"
-        },
-        {
-          "path": "src/home/editor.ts",
-          "kind": "dynamic-import",
-          "original": "./home/editor"
+          "original": "./settings/card"
         }
       ],
       "format": "esm"
@@ -228,19 +212,11 @@
     "dist/main.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-2Z5R5A4F.js",
+          "path": "dist/chunks/chunk-VAT4AREH.js",
           "kind": "import-statement"
         },
         {
-          "path": "dist/chunks/chunk-XHUYK2JI.js",
-          "kind": "import-statement"
-        },
-        {
-          "path": "dist/chunks/drawer-IBB6HEPJ.js",
-          "kind": "dynamic-import"
-        },
-        {
-          "path": "dist/chunks/editor-SF624HJJ.js",
+          "path": "dist/chunks/card-4H6TLLZZ.js",
           "kind": "dynamic-import"
         }
       ],
@@ -261,13 +237,13 @@
           "bytesInOutput": 3921
         },
         "src/bookmarks/sidebar.ts": {
-          "bytesInOutput": 7040
+          "bytesInOutput": 7251
         },
         "src/core/settings.ts": {
-          "bytesInOutput": 3747
+          "bytesInOutput": 3720
         },
         "src/home/controller.ts": {
-          "bytesInOutput": 315
+          "bytesInOutput": 289
         },
         "src/search/controller.ts": {
           "bytesInOutput": 3358
@@ -276,82 +252,52 @@
           "bytesInOutput": 1782
         },
         "src/main.ts": {
-          "bytesInOutput": 3552
+          "bytesInOutput": 3684
         }
       },
-      "bytes": 30264
+      "bytes": 30514
     },
-    "dist/chunks/drawer-IBB6HEPJ.js": {
+    "dist/chunks/card-4H6TLLZZ.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-XHUYK2JI.js",
+          "path": "dist/chunks/chunk-VAT4AREH.js",
           "kind": "import-statement"
         }
       ],
       "exports": [
-        "openSettingsDrawer"
+        "openSettingsCard"
       ],
-      "entryPoint": "src/settings/drawer.ts",
-      "inputs": {
-        "src/settings/drawer.ts": {
-          "bytesInOutput": 2170
-        }
-      },
-      "bytes": 2243
-    },
-    "dist/chunks/editor-SF624HJJ.js": {
-      "imports": [
-        {
-          "path": "dist/chunks/chunk-2Z5R5A4F.js",
-          "kind": "import-statement"
-        },
-        {
-          "path": "dist/chunks/chunk-XHUYK2JI.js",
-          "kind": "import-statement"
-        }
-      ],
-      "exports": [
-        "openHomeEditor"
-      ],
-      "entryPoint": "src/home/editor.ts",
+      "entryPoint": "src/settings/card.ts",
       "inputs": {
         "src/home/background.ts": {
           "bytesInOutput": 1063
         },
-        "src/home/editor.ts": {
-          "bytesInOutput": 3603
+        "src/settings/card.ts": {
+          "bytesInOutput": 6444
         }
       },
-      "bytes": 4782
+      "bytes": 7593
     },
-    "dist/chunks/chunk-2Z5R5A4F.js": {
+    "dist/chunks/chunk-VAT4AREH.js": {
       "imports": [],
       "exports": [
         "a",
         "b",
         "c",
         "d",
-        "e"
+        "e",
+        "f",
+        "g"
       ],
       "inputs": {
+        "src/core/i18n.ts": {
+          "bytesInOutput": 4764
+        },
         "src/search/providers.ts": {
           "bytesInOutput": 2424
         }
       },
-      "bytes": 2468
-    },
-    "dist/chunks/chunk-XHUYK2JI.js": {
-      "imports": [],
-      "exports": [
-        "a",
-        "b"
-      ],
-      "inputs": {
-        "src/core/i18n.ts": {
-          "bytesInOutput": 4564
-        }
-      },
-      "bytes": 4587
+      "bytes": 7246
     },
     "dist/assets/search-WNEL3I2P.svg": {
       "imports": [],
@@ -383,15 +329,15 @@
       },
       "bytes": 225
     },
-    "dist/assets/edit-UVN2SNXB.svg": {
+    "dist/assets/settings-DUHQ46J6.svg": {
       "imports": [],
       "exports": [],
       "inputs": {
-        "src/assets/edit.svg": {
-          "bytesInOutput": 177
+        "src/assets/settings.svg": {
+          "bytesInOutput": 418
         }
       },
-      "bytes": 177
+      "bytes": 418
     },
     "dist/main.css": {
       "imports": [
@@ -408,16 +354,16 @@
           "kind": "url-token"
         },
         {
-          "path": "dist/assets/edit-UVN2SNXB.svg",
+          "path": "dist/assets/settings-DUHQ46J6.svg",
           "kind": "url-token"
         }
       ],
       "inputs": {
         "src/styles.css": {
-          "bytesInOutput": 13630
+          "bytesInOutput": 14281
         }
       },
-      "bytes": 13631
+      "bytes": 14282
     }
   }
 }

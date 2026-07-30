@@ -224,52 +224,206 @@ try {
     .waitFor({ timeout: 3_000 });
   record("bookmark, history, and online search suggestions");
 
-  const openEditor = async () => {
-    await page.locator("#edit-home").click();
-    await page.locator("#home-editor").waitFor();
-  };
-  const saveEditor = async () => {
-    await page.locator(".home-edit-bar .primary").click();
-    await page.locator("#home-editor").waitFor({ state: "detached" });
+  const openSettings = async () => {
+    await page.locator("#open-settings").click();
+    await page.locator(".settings-card").waitFor();
   };
 
-  await openEditor();
-  await page.locator("#home-editor select").selectOption("bing");
-  await page
-    .locator("#web-search-input")
-    .getAttribute("placeholder")
-    .then((placeholder) =>
-      assert.equal(placeholder, "Search Bing or enter an address"),
+  await openSettings();
+  assert.equal(
+    await page
+      .locator(".settings-card")
+      .evaluate((element) => element.getAnimations().length > 0),
+    true,
+  );
+  await page.locator(".settings-card").evaluate(async (element) => {
+    await Promise.all(
+      element.getAnimations().map((animation) => animation.finished),
     );
+  });
+  const anchoredCard = await page.evaluate(() => {
+    const card = globalThis.document.querySelector(".settings-card");
+    const trigger = globalThis.document.querySelector("#open-settings");
+    if (!card || !trigger) {
+      throw new Error("Settings card is missing");
+    }
+    const cardRect = card.getBoundingClientRect();
+    const triggerRect = trigger.getBoundingClientRect();
+    return {
+      cardRight: cardRect.right,
+      cardBottom: cardRect.bottom,
+      triggerRight: triggerRect.right,
+      triggerTop: triggerRect.top,
+    };
+  });
+  assert.equal(anchoredCard.cardRight, anchoredCard.triggerRight);
+  assert.ok(anchoredCard.cardBottom < anchoredCard.triggerTop);
+  const exitStarted = await page.evaluate(() => {
+    const card = globalThis.document.querySelector(".settings-card");
+    globalThis.document.dispatchEvent(
+      new globalThis.KeyboardEvent("keydown", {
+        bubbles: true,
+        key: "Escape",
+      }),
+    );
+    return Boolean(card?.isConnected && card.classList.contains("is-closing"));
+  });
+  assert.equal(exitStarted, true);
+  await page.locator(".settings-card").waitFor({ state: "detached" });
+  assert.equal(
+    await page.evaluate(() => globalThis.document.activeElement?.id),
+    "open-settings",
+  );
+  await page.locator("#sidebar-menu").click();
   await page
-    .locator(".home-edit-bar")
-    .getByText("Cancel", { exact: true })
+    .locator(".sidebar-popover")
+    .getByText("Settings", { exact: true })
     .click();
-  await page.locator("#home-editor").waitFor({ state: "detached" });
+  await page.locator(".settings-card").waitFor();
+  await page.locator(".settings-close").click();
+  await page.locator(".settings-card").waitFor({ state: "detached" });
   assert.equal(
-    await page.locator("#web-search-input").getAttribute("placeholder"),
-    "Search Google or enter an address",
+    await page.evaluate(() => globalThis.document.activeElement?.id),
+    "sidebar-menu",
   );
-  record("home editor cancel restores the persisted preview");
+  await openSettings();
+  await page.locator("#bookmark-count").click();
+  await page.locator(".settings-card").waitFor({ state: "detached" });
+  record("anchored settings card opens from both entry points");
 
-  await openEditor();
-  await page.locator("#home-editor select").selectOption("bing");
-  await saveEditor();
+  const densityIds = await page.evaluate(async (parentId) => {
+    const ids = [];
+    for (let index = 0; index < 30; index += 1) {
+      const node = await chrome.bookmarks.create({
+        parentId,
+        title: `Density Bookmark ${String(index).padStart(2, "0")}`,
+        url: `https://example.com/density-${index}`,
+      });
+      ids.push(node.id);
+    }
+    return ids;
+  }, bookmarkBarId);
+  externalIds.push(...densityIds);
+  await page.waitForFunction(
+    () =>
+      Number(
+        globalThis.document.querySelector("#bookmark-count")?.textContent,
+      ) >= 32,
+  );
+
+  await openSettings();
+  await page.locator("#settings-search-provider").selectOption("bing");
+  await page.waitForFunction(
+    () =>
+      globalThis.document
+        .querySelector("#web-search-input")
+        ?.getAttribute("placeholder")
+        ?.includes("Bing") === true,
+  );
+  await page.locator("#settings-search-provider").selectOption("custom");
+  await page.waitForFunction(async () => {
+    const stored = await chrome.storage.sync.get("settings");
+    return stored.settings.search.provider === "custom";
+  });
+  const savedCustomUrl = await page.evaluate(async () => {
+    const stored = await chrome.storage.sync.get("settings");
+    return stored.settings.search.customSearchUrl;
+  });
+  await page.locator("#settings-custom-url").fill("not-a-search-url");
+  await page.locator("#settings-custom-url").press("Tab");
   assert.equal(
-    await page.locator("#web-search-input").getAttribute("placeholder"),
-    "Search Bing or enter an address",
+    await page.locator("#settings-custom-url").getAttribute("aria-invalid"),
+    "true",
   );
-  record("home editor saves search settings without jump controls");
+  assert.equal(
+    await page.evaluate(async () => {
+      const stored = await chrome.storage.sync.get("settings");
+      return stored.settings.search.customSearchUrl;
+    }),
+    savedCustomUrl,
+  );
+  await page.locator("#settings-search-provider").selectOption("bing");
+  await page.locator("#settings-history-suggestions").uncheck();
+  await page.locator("#settings-online-suggestions").uncheck();
+  await page.locator("#settings-sidebar-collapsed").check();
+  await page.locator("body.sidebar-collapsed").waitFor();
+  await page.locator("#settings-sidebar-collapsed").uncheck();
+  await page.locator("body.sidebar-collapsed").waitFor({ state: "detached" });
+  await page.locator("#settings-sidebar-width").fill("400");
+  await page.waitForFunction(
+    () =>
+      globalThis.document
+        .querySelector("#bookmark-sidebar")
+        ?.getBoundingClientRect().width === 400,
+  );
 
+  await page.locator("#bookmark-tree").evaluate((element) => {
+    element.scrollTop = 228;
+  });
+  await page.locator("#settings-sidebar-density").selectOption("compact");
+  await page.waitForFunction(
+    () =>
+      globalThis.document.documentElement.dataset.sidebarDensity === "compact",
+  );
+  const compactLayout = await page.evaluate(() => {
+    const rootStyle = globalThis.getComputedStyle(
+      globalThis.document.documentElement,
+    );
+    const viewport = globalThis.document.querySelector("#bookmark-tree");
+    const row = globalThis.document.querySelector(".tree-row");
+    if (!viewport || !row) {
+      throw new Error("Bookmark rows are missing");
+    }
+    return {
+      rowHeight: row.getBoundingClientRect().height,
+      headerHeight: rootStyle
+        .getPropertyValue("--sidebar-header-height")
+        .trim(),
+      toolsHeight: rootStyle.getPropertyValue("--sidebar-tools-height").trim(),
+      scrollTop: viewport.scrollTop,
+    };
+  });
+  assert.deepEqual(compactLayout, {
+    rowHeight: 32,
+    headerHeight: "44px",
+    toolsHeight: "40px",
+    scrollTop: 192,
+  });
+  await page.screenshot({
+    path: path.join(screenshotsPath, "bookmark-home-settings.png"),
+  });
+  await page.locator(".settings-close").click();
   await page.reload();
-  assert.equal(
-    await page.locator("#web-search-input").getAttribute("placeholder"),
-    "Search Bing or enter an address",
+  await page.waitForSelector("#app");
+  await page.waitForFunction(
+    () =>
+      globalThis.document
+        .querySelector("#bookmark-sidebar")
+        ?.getBoundingClientRect().width === 400,
   );
+  const persistedSettings = await page.evaluate(async () => {
+    const stored = await chrome.storage.sync.get("settings");
+    return {
+      density: stored.settings.appearance.sidebarDensity,
+      width: globalThis.document
+        .querySelector("#bookmark-sidebar")
+        ?.getBoundingClientRect().width,
+      history: stored.settings.search.historySuggestions,
+      online: stored.settings.search.onlineSuggestions,
+      provider: stored.settings.search.provider,
+    };
+  });
+  assert.deepEqual(persistedSettings, {
+    density: "compact",
+    width: 400,
+    history: false,
+    online: false,
+    provider: "bing",
+  });
   assert.equal(await page.locator("#top-links, .top-link").count(), 0);
-  record("search settings persist without top-right jumps");
+  record("settings apply immediately and persist valid values");
 
-  await openEditor();
+  await openSettings();
   const png = await readFile(
     path.join(
       workspaceRoot,
@@ -280,39 +434,24 @@ try {
       "icon-128.png",
     ),
   );
-  await page.locator('.home-edit-bar input[type="file"]').setInputFiles({
+  await page.locator("#settings-background-file").setInputFiles({
     name: "background.png",
     mimeType: "image/png",
     buffer: png,
   });
   await page.locator("body.has-custom-background").waitFor();
-  await page.screenshot({
-    path: path.join(screenshotsPath, "bookmark-home-edit.png"),
-  });
-  await saveEditor();
+  await page.locator(".settings-card").press("Escape");
   await page.reload();
   await page.locator("body.has-custom-background").waitFor();
-  record("local background conversion and persistence");
+  record("local background saves immediately");
 
-  await openEditor();
-  await page
-    .locator(".home-edit-bar")
-    .getByText("Remove background", { exact: true })
-    .click();
-  await saveEditor();
+  await openSettings();
+  await page.locator("#settings-remove-background").click();
   await page
     .locator("body.has-custom-background")
     .waitFor({ state: "detached" });
-
-  await page.evaluate(async () => {
-    const stored = await chrome.storage.sync.get("settings");
-    await chrome.storage.sync.set({
-      settings: {
-        ...stored.settings,
-        appearance: { ...stored.settings.appearance, theme: "dark" },
-      },
-    });
-  });
+  await page.locator("#settings-theme").selectOption("dark");
+  await page.locator(".settings-card").press("Escape");
   await page.reload();
   await page.waitForSelector("#app");
   assert.equal(
@@ -327,6 +466,32 @@ try {
   });
   record("dark transparent preset");
 
+  await page.setViewportSize({ width: 640, height: 900 });
+  await openSettings();
+  await page.locator(".settings-card").evaluate(async (element) => {
+    await Promise.all(
+      element.getAnimations().map((animation) => animation.finished),
+    );
+  });
+  const narrowSettings = await page.evaluate(() => {
+    const card = globalThis.document.querySelector(".settings-card");
+    const grid = globalThis.document.querySelector(".settings-grid");
+    if (!card || !grid) {
+      throw new Error("Narrow settings layout is missing");
+    }
+    const bounds = card.getBoundingClientRect();
+    return {
+      left: bounds.left,
+      right: bounds.right,
+      columns: globalThis.getComputedStyle(grid).gridTemplateColumns.split(" ")
+        .length,
+    };
+  });
+  assert.ok(narrowSettings.left >= 12);
+  assert.ok(narrowSettings.right <= 628);
+  assert.equal(narrowSettings.columns, 1);
+  await page.locator(".settings-card").press("Escape");
+  await page.locator(".settings-card").waitFor({ state: "detached" });
   await page.setViewportSize({ width: 720, height: 900 });
   await page.screenshot({
     path: path.join(screenshotsPath, "bookmark-home-narrow.png"),
@@ -407,7 +572,7 @@ await writeFile(
       screenshots: [
         "screenshots/bookmark-home-light.png",
         "screenshots/bookmark-home-dark.png",
-        "screenshots/bookmark-home-edit.png",
+        "screenshots/bookmark-home-settings.png",
         "screenshots/bookmark-home-narrow.png",
       ],
       passed: checks.length,
