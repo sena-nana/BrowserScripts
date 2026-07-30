@@ -1,0 +1,6 @@
+{
+  "name": "@browserscripts/bookmark-home",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module"
+}

@@ -1,0 +1,90 @@
+{
+  "generatedAt": "2026-07-30T02:49:03.098Z",
+  "environment": {
+    "node": "v25.8.1",
+    "browserUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+    "platform": "darwin-arm64"
+  },
+  "stages": [
+    {
+      "name": "shell-and-manifest",
+      "evidence": {
+        "mainJsBytes": 26931,
+        "mainCssBytes": 12417,
+        "startupBytes": 40088,
+        "unpackedBytes": 75252
+      }
+    },
+    {
+      "name": "bookmark-tree",
+      "evidence": {
+        "realBookmarkCount": 5000,
+        "renderedRows": 32,
+        "expandDurationMs": 73.49462500000027,
+        "syntheticNodeCount": 10000,
+        "syntheticRows": 10002,
+        "syntheticMaterializeMs": 2.1848339999999666
+      }
+    },
+    {
+      "name": "search-and-final-startup",
+      "evidence": {
+        "startup": {
+          "runs": 10,
+          "shellReadyMs": [
+            126.39999985694885,
+            120.09999990463257,
+            129,
+            132.09999990463257,
+            125.40000009536743,
+            125.39999985694885,
+            123.59999990463257,
+            126.70000004768372,
+            124.59999990463257,
+            124
+          ],
+          "shellReadyP95Ms": 132.09999990463257,
+          "firstRowsMs": [
+            145.79999995231628,
+            138,
+            147.40000009536743,
+            154.5,
+            143.5,
+            141.19999980926514,
+            156.09999990463257,
+            154,
+            157.59999990463257,
+            140.09999990463257
+          ],
+          "firstRowsP95Ms": 157.59999990463257
+        },
+        "suggestions": {
+          "runs": 10,
+          "durationsMs": [
+            1,
+            0.6000001430511475,
+            0.40000009536743164,
+            0.10000014305114746,
+            0.20000004768371582,
+            0.20000004768371582,
+            0.09999990463256836,
+            0.09999990463256836,
+            0.2999999523162842,
+            0.2999999523162842
+          ],
+          "p95Ms": 1
+        }
+      }
+    }
+  ],
+  "budgets": {
+    "mainJs": true,
+    "mainCss": true,
+    "startupAssets": true,
+    "shellReadyP95": true,
+    "firstRowsP95": true,
+    "localSuggestionsP95": true,
+    "renderedRows": true
+  },
+  "passed": true
+}

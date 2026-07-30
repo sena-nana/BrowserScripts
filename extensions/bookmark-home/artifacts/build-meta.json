@@ -1,0 +1,439 @@
+{
+  "inputs": {
+    "src/assets/search.svg": {
+      "bytes": 205,
+      "imports": []
+    },
+    "src/assets/add.svg": {
+      "bytes": 133,
+      "imports": []
+    },
+    "src/assets/menu.svg": {
+      "bytes": 225,
+      "imports": []
+    },
+    "src/assets/edit.svg": {
+      "bytes": 177,
+      "imports": []
+    },
+    "src/styles.css": {
+      "bytes": 15324,
+      "imports": [
+        {
+          "path": "src/assets/search.svg",
+          "kind": "url-token",
+          "original": "./assets/search.svg"
+        },
+        {
+          "path": "src/assets/add.svg",
+          "kind": "url-token",
+          "original": "./assets/add.svg"
+        },
+        {
+          "path": "src/assets/menu.svg",
+          "kind": "url-token",
+          "original": "./assets/menu.svg"
+        },
+        {
+          "path": "src/assets/edit.svg",
+          "kind": "url-token",
+          "original": "./assets/edit.svg"
+        }
+      ]
+    },
+    "src/bookmarks/chrome-repository.ts": {
+      "bytes": 5587,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/core/i18n.ts": {
+      "bytes": 5238,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/ui/dialogs.ts": {
+      "bytes": 7865,
+      "imports": [
+        {
+          "path": "src/core/i18n.ts",
+          "kind": "import-statement",
+          "original": "../core/i18n"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/bookmarks/tree-model.ts": {
+      "bytes": 9432,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/bookmarks/sidebar.ts": {
+      "bytes": 14497,
+      "imports": [
+        {
+          "path": "src/core/i18n.ts",
+          "kind": "import-statement",
+          "original": "../core/i18n"
+        },
+        {
+          "path": "src/ui/dialogs.ts",
+          "kind": "import-statement",
+          "original": "../ui/dialogs"
+        },
+        {
+          "path": "src/bookmarks/tree-model.ts",
+          "kind": "import-statement",
+          "original": "./tree-model"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/core/settings.ts": {
+      "bytes": 10258,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/search/providers.ts": {
+      "bytes": 6065,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/home/controller.ts": {
+      "bytes": 1806,
+      "imports": [
+        {
+          "path": "src/search/providers.ts",
+          "kind": "import-statement",
+          "original": "../search/providers"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/search/controller.ts": {
+      "bytes": 7196,
+      "imports": [
+        {
+          "path": "src/core/i18n.ts",
+          "kind": "import-statement",
+          "original": "../core/i18n"
+        },
+        {
+          "path": "src/search/providers.ts",
+          "kind": "import-statement",
+          "original": "./providers"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/search/suggestion-engine.ts": {
+      "bytes": 4872,
+      "imports": [
+        {
+          "path": "src/search/providers.ts",
+          "kind": "import-statement",
+          "original": "./providers"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/settings/drawer.ts": {
+      "bytes": 4055,
+      "imports": [
+        {
+          "path": "src/core/i18n.ts",
+          "kind": "import-statement",
+          "original": "../core/i18n"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/home/background.ts": {
+      "bytes": 2317,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/home/editor.ts": {
+      "bytes": 9420,
+      "imports": [
+        {
+          "path": "src/core/i18n.ts",
+          "kind": "import-statement",
+          "original": "../core/i18n"
+        },
+        {
+          "path": "src/core/settings.ts",
+          "kind": "import-statement",
+          "original": "../core/settings"
+        },
+        {
+          "path": "src/search/providers.ts",
+          "kind": "import-statement",
+          "original": "../search/providers"
+        },
+        {
+          "path": "src/home/background.ts",
+          "kind": "import-statement",
+          "original": "./background"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/main.ts": {
+      "bytes": 7449,
+      "imports": [
+        {
+          "path": "src/styles.css",
+          "kind": "import-statement",
+          "original": "./styles.css"
+        },
+        {
+          "path": "src/bookmarks/chrome-repository.ts",
+          "kind": "import-statement",
+          "original": "./bookmarks/chrome-repository"
+        },
+        {
+          "path": "src/bookmarks/sidebar.ts",
+          "kind": "import-statement",
+          "original": "./bookmarks/sidebar"
+        },
+        {
+          "path": "src/core/i18n.ts",
+          "kind": "import-statement",
+          "original": "./core/i18n"
+        },
+        {
+          "path": "src/core/settings.ts",
+          "kind": "import-statement",
+          "original": "./core/settings"
+        },
+        {
+          "path": "src/home/controller.ts",
+          "kind": "import-statement",
+          "original": "./home/controller"
+        },
+        {
+          "path": "src/search/controller.ts",
+          "kind": "import-statement",
+          "original": "./search/controller"
+        },
+        {
+          "path": "src/search/suggestion-engine.ts",
+          "kind": "import-statement",
+          "original": "./search/suggestion-engine"
+        },
+        {
+          "path": "src/settings/drawer.ts",
+          "kind": "dynamic-import",
+          "original": "./settings/drawer"
+        },
+        {
+          "path": "src/home/editor.ts",
+          "kind": "dynamic-import",
+          "original": "./home/editor"
+        }
+      ],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    "dist/main.js": {
+      "imports": [
+        {
+          "path": "dist/chunks/chunk-HQ7FJHV7.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "dist/chunks/chunk-HV7PQUWS.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "dist/chunks/drawer-3IW4CAEU.js",
+          "kind": "dynamic-import"
+        },
+        {
+          "path": "dist/chunks/editor-4P4QP26A.js",
+          "kind": "dynamic-import"
+        }
+      ],
+      "exports": [],
+      "entryPoint": "src/main.ts",
+      "cssBundle": "dist/main.css",
+      "inputs": {
+        "src/styles.css": {
+          "bytesInOutput": 0
+        },
+        "src/bookmarks/chrome-repository.ts": {
+          "bytesInOutput": 2539
+        },
+        "src/ui/dialogs.ts": {
+          "bytesInOutput": 3897
+        },
+        "src/bookmarks/tree-model.ts": {
+          "bytesInOutput": 3921
+        },
+        "src/bookmarks/sidebar.ts": {
+          "bytesInOutput": 7035
+        },
+        "src/home/controller.ts": {
+          "bytesInOutput": 689
+        },
+        "src/search/controller.ts": {
+          "bytesInOutput": 3358
+        },
+        "src/search/suggestion-engine.ts": {
+          "bytesInOutput": 1782
+        },
+        "src/main.ts": {
+          "bytesInOutput": 3578
+        }
+      },
+      "bytes": 26931
+    },
+    "dist/chunks/drawer-3IW4CAEU.js": {
+      "imports": [
+        {
+          "path": "dist/chunks/chunk-HV7PQUWS.js",
+          "kind": "import-statement"
+        }
+      ],
+      "exports": [
+        "openSettingsDrawer"
+      ],
+      "entryPoint": "src/settings/drawer.ts",
+      "inputs": {
+        "src/settings/drawer.ts": {
+          "bytesInOutput": 2170
+        }
+      },
+      "bytes": 2243
+    },
+    "dist/chunks/editor-4P4QP26A.js": {
+      "imports": [
+        {
+          "path": "dist/chunks/chunk-HQ7FJHV7.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "dist/chunks/chunk-HV7PQUWS.js",
+          "kind": "import-statement"
+        }
+      ],
+      "exports": [
+        "openHomeEditor"
+      ],
+      "entryPoint": "src/home/editor.ts",
+      "inputs": {
+        "src/home/background.ts": {
+          "bytesInOutput": 1063
+        },
+        "src/home/editor.ts": {
+          "bytesInOutput": 4741
+        }
+      },
+      "bytes": 5934
+    },
+    "dist/chunks/chunk-HQ7FJHV7.js": {
+      "imports": [],
+      "exports": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j"
+      ],
+      "inputs": {
+        "src/core/settings.ts": {
+          "bytesInOutput": 4307
+        },
+        "src/search/providers.ts": {
+          "bytesInOutput": 2745
+        }
+      },
+      "bytes": 7131
+    },
+    "dist/chunks/chunk-HV7PQUWS.js": {
+      "imports": [],
+      "exports": [
+        "a",
+        "b"
+      ],
+      "inputs": {
+        "src/core/i18n.ts": {
+          "bytesInOutput": 4621
+        }
+      },
+      "bytes": 4644
+    },
+    "dist/assets/search-WNEL3I2P.svg": {
+      "imports": [],
+      "exports": [],
+      "inputs": {
+        "src/assets/search.svg": {
+          "bytesInOutput": 205
+        }
+      },
+      "bytes": 205
+    },
+    "dist/assets/add-MTNOHUXK.svg": {
+      "imports": [],
+      "exports": [],
+      "inputs": {
+        "src/assets/add.svg": {
+          "bytesInOutput": 133
+        }
+      },
+      "bytes": 133
+    },
+    "dist/assets/menu-IHUSCX76.svg": {
+      "imports": [],
+      "exports": [],
+      "inputs": {
+        "src/assets/menu.svg": {
+          "bytesInOutput": 225
+        }
+      },
+      "bytes": 225
+    },
+    "dist/assets/edit-UVN2SNXB.svg": {
+      "imports": [],
+      "exports": [],
+      "inputs": {
+        "src/assets/edit.svg": {
+          "bytesInOutput": 177
+        }
+      },
+      "bytes": 177
+    },
+    "dist/main.css": {
+      "imports": [
+        {
+          "path": "dist/assets/search-WNEL3I2P.svg",
+          "kind": "url-token"
+        },
+        {
+          "path": "dist/assets/add-MTNOHUXK.svg",
+          "kind": "url-token"
+        },
+        {
+          "path": "dist/assets/menu-IHUSCX76.svg",
+          "kind": "url-token"
+        },
+        {
+          "path": "dist/assets/edit-UVN2SNXB.svg",
+          "kind": "url-token"
+        }
+      ],
+      "inputs": {
+        "src/styles.css": {
+          "bytesInOutput": 12416
+        }
+      },
+      "bytes": 12417
+    }
+  }
+}
