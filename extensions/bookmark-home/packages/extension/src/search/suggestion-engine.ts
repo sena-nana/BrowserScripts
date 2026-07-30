@@ -2,7 +2,7 @@ import type {
   BookmarkEvent,
   BookmarkNode,
   BookmarkRepository,
-  SettingsV3,
+  SettingsV4,
   Suggestion,
 } from "../core/types";
 import { fetchOnlineSuggestions } from "./providers";
@@ -76,7 +76,7 @@ export class SuggestionEngine {
 
   async suggest(
     query: string,
-    settings: SettingsV3["search"],
+    settings: SettingsV4["search"],
     signal: AbortSignal,
   ): Promise<Suggestion[]> {
     const value = query.trim();

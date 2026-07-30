@@ -2,7 +2,7 @@ import type {
   HomeBackgroundV1,
   LocalUiStateV1,
   SearchProviderId,
-  SettingsV3,
+  SettingsV4,
   SidebarDensity,
   ThemePreference,
 } from "./types";
@@ -12,13 +12,15 @@ const LOCAL_UI_KEY = "uiState";
 const HOME_BACKGROUND_KEY = "homeBackground";
 const MAX_BACKGROUND_DATA_URL_LENGTH = 5_600_000;
 
-export const DEFAULT_SETTINGS: SettingsV3 = {
-  version: 3,
+export const DEFAULT_SETTINGS: SettingsV4 = {
+  version: 4,
   appearance: {
     theme: "system",
     sidebarWidth: 350,
     sidebarCollapsed: false,
     sidebarDensity: "standard",
+    panelTransparency: 20,
+    backdropBlur: 7,
   },
   search: {
     provider: "google",
@@ -34,7 +36,7 @@ const DEFAULT_LOCAL_UI: LocalUiStateV1 = {
   expandedFolderIds: [],
 };
 
-type SettingsListener = (settings: SettingsV3) => void;
+type SettingsListener = (settings: SettingsV4) => void;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -57,25 +59,35 @@ function isSidebarDensity(value: unknown): value is SidebarDensity {
   return value === "compact" || value === "standard" || value === "relaxed";
 }
 
-function boundedWidth(value: unknown): number {
+function boundedInteger(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number,
+): number {
   return typeof value === "number" && Number.isFinite(value)
-    ? Math.min(480, Math.max(260, Math.round(value)))
-    : DEFAULT_SETTINGS.appearance.sidebarWidth;
+    ? Math.min(max, Math.max(min, Math.round(value)))
+    : fallback;
 }
 
-export function sanitizeSettings(value: unknown): SettingsV3 {
-  if (!isRecord(value)) {
+export function sanitizeSettings(value: unknown): SettingsV4 {
+  if (!isRecord(value) || value.version !== DEFAULT_SETTINGS.version) {
     return structuredClone(DEFAULT_SETTINGS);
   }
   const appearance = isRecord(value.appearance) ? value.appearance : {};
   const search = isRecord(value.search) ? value.search : {};
   return {
-    version: 3,
+    version: DEFAULT_SETTINGS.version,
     appearance: {
       theme: isTheme(appearance.theme)
         ? appearance.theme
         : DEFAULT_SETTINGS.appearance.theme,
-      sidebarWidth: boundedWidth(appearance.sidebarWidth),
+      sidebarWidth: boundedInteger(
+        appearance.sidebarWidth,
+        260,
+        480,
+        DEFAULT_SETTINGS.appearance.sidebarWidth,
+      ),
       sidebarCollapsed:
         typeof appearance.sidebarCollapsed === "boolean"
           ? appearance.sidebarCollapsed
@@ -83,6 +95,18 @@ export function sanitizeSettings(value: unknown): SettingsV3 {
       sidebarDensity: isSidebarDensity(appearance.sidebarDensity)
         ? appearance.sidebarDensity
         : DEFAULT_SETTINGS.appearance.sidebarDensity,
+      panelTransparency: boundedInteger(
+        appearance.panelTransparency,
+        0,
+        90,
+        DEFAULT_SETTINGS.appearance.panelTransparency,
+      ),
+      backdropBlur: boundedInteger(
+        appearance.backdropBlur,
+        0,
+        30,
+        DEFAULT_SETTINGS.appearance.backdropBlur,
+      ),
     },
     search: {
       provider: isProvider(search.provider)
@@ -175,7 +199,7 @@ export class SettingsStore {
     this.#listeners.clear();
   }
 
-  get settings(): SettingsV3 {
+  get settings(): SettingsV4 {
     return structuredClone(this.#settings);
   }
 
@@ -193,7 +217,7 @@ export class SettingsStore {
   }
 
   async updateAppearance(
-    changes: Partial<SettingsV3["appearance"]>,
+    changes: Partial<SettingsV4["appearance"]>,
   ): Promise<void> {
     await this.#enqueueSettingsUpdate((settings) => ({
       ...settings,
@@ -201,7 +225,7 @@ export class SettingsStore {
     }));
   }
 
-  async updateSearch(changes: Partial<SettingsV3["search"]>): Promise<void> {
+  async updateSearch(changes: Partial<SettingsV4["search"]>): Promise<void> {
     await this.#enqueueSettingsUpdate((settings) => ({
       ...settings,
       search: { ...settings.search, ...changes },
@@ -236,7 +260,7 @@ export class SettingsStore {
   }
 
   async #enqueueSettingsUpdate(
-    update: (settings: SettingsV3) => SettingsV3,
+    update: (settings: SettingsV4) => SettingsV4,
   ): Promise<void> {
     const operation = this.#settingsWrite.then(async () => {
       const next = sanitizeSettings(update(this.settings));

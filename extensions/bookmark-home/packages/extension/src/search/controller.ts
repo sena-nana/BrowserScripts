@@ -1,5 +1,5 @@
 import { t } from "../core/i18n";
-import type { SettingsV3, Suggestion } from "../core/types";
+import type { SettingsV4, Suggestion } from "../core/types";
 import { providerName, resolveSearchInput } from "./providers";
 import type { SuggestionEngine } from "./suggestion-engine";
 
@@ -12,7 +12,7 @@ interface SearchElements {
 export class SearchController {
   readonly #engine: SuggestionEngine;
   readonly #elements: SearchElements;
-  #settings: SettingsV3["search"];
+  #settings: SettingsV4["search"];
   #suggestions: Suggestion[] = [];
   #selectedIndex = -1;
   #timer = 0;
@@ -21,7 +21,7 @@ export class SearchController {
   constructor(
     engine: SuggestionEngine,
     elements: SearchElements,
-    settings: SettingsV3["search"],
+    settings: SettingsV4["search"],
   ) {
     this.#engine = engine;
     this.#elements = elements;
@@ -88,7 +88,7 @@ export class SearchController {
     this.#engine.dispose();
   }
 
-  updateSettings(settings: SettingsV3["search"]): void {
+  updateSettings(settings: SettingsV4["search"]): void {
     this.#settings = { ...settings };
     this.#updatePlaceholder();
     this.#hideSuggestions();

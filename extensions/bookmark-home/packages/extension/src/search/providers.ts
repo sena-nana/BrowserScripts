@@ -1,4 +1,4 @@
-import type { SearchProviderId, SettingsV3, Suggestion } from "../core/types";
+import type { SearchProviderId, SettingsV4, Suggestion } from "../core/types";
 
 export interface SearchProvider {
   id: SearchProviderId;
@@ -32,7 +32,7 @@ export const SEARCH_PROVIDERS: Record<
   },
 };
 
-export function providerName(settings: SettingsV3["search"]): string {
+export function providerName(settings: SettingsV4["search"]): string {
   return settings.provider === "custom"
     ? settings.customName.trim() || "Custom"
     : SEARCH_PROVIDERS[settings.provider].name;
@@ -51,7 +51,7 @@ export function isValidCustomSearchUrl(value: string): boolean {
 
 export function buildSearchUrl(
   query: string,
-  settings: SettingsV3["search"],
+  settings: SettingsV4["search"],
 ): string {
   const template =
     settings.provider === "custom" &&
@@ -93,7 +93,7 @@ export function directNavigationUrl(input: string): string | null {
 
 export function resolveSearchInput(
   input: string,
-  settings: SettingsV3["search"],
+  settings: SettingsV4["search"],
 ): string | null {
   const value = input.trim();
   if (!value || BLOCKED_SCHEMES.test(value)) {

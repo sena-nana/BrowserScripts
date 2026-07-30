@@ -7,76 +7,47 @@ import {
   sanitizeSettings,
 } from "./settings";
 
-test("legacy settings migrate valid preferences to SettingsV3", () => {
+test("SettingsV4 preserves valid appearance values", () => {
   const settings = sanitizeSettings({
-    version: 1,
-    appearance: {
-      theme: "dark",
-      sidebarWidth: 900,
-      sidebarCollapsed: true,
-    },
-    search: {
-      provider: "bing",
-      customName: 12,
-      customSearchUrl: "https://example.com/?q={query}",
-      historySuggestions: false,
-      onlineSuggestions: true,
-    },
-  });
-
-  assert.deepEqual(settings, {
-    version: 3,
-    appearance: {
-      theme: "dark",
-      sidebarWidth: 480,
-      sidebarCollapsed: true,
-      sidebarDensity: "standard",
-    },
-    search: {
-      provider: "bing",
-      customName: "",
-      customSearchUrl: "https://example.com/?q={query}",
-      historySuggestions: false,
-      onlineSuggestions: true,
-    },
-  });
-});
-
-test("SettingsV2 migration defaults to the standard sidebar density", () => {
-  const settings = sanitizeSettings({
-    version: 2,
-    appearance: {
-      theme: "light",
-      sidebarWidth: 320,
-      sidebarCollapsed: false,
-    },
-  });
-
-  assert.equal(settings.version, 3);
-  assert.equal(settings.appearance.sidebarDensity, "standard");
-});
-
-test("SettingsV3 preserves a valid sidebar density", () => {
-  const settings = sanitizeSettings({
-    version: 3,
+    version: 4,
     appearance: {
       theme: "system",
       sidebarWidth: 350,
       sidebarCollapsed: false,
       sidebarDensity: "relaxed",
+      panelTransparency: 55,
+      backdropBlur: 18,
     },
   });
 
   assert.equal(settings.appearance.sidebarDensity, "relaxed");
+  assert.equal(settings.appearance.panelTransparency, 55);
+  assert.equal(settings.appearance.backdropBlur, 18);
+});
+
+test("appearance ranges are rounded and bounded", () => {
+  const settings = sanitizeSettings({
+    version: 4,
+    appearance: {
+      panelTransparency: 120.6,
+      backdropBlur: -2.4,
+    },
+  });
+
+  assert.equal(settings.appearance.panelTransparency, 90);
+  assert.equal(settings.appearance.backdropBlur, 0);
 });
 
 test("invalid persisted values fall back to safe defaults", () => {
   const settings = sanitizeSettings({
+    version: 4,
     appearance: {
       theme: "neon",
       sidebarWidth: Number.NaN,
       sidebarCollapsed: "yes",
       sidebarDensity: "tiny",
+      panelTransparency: Number.POSITIVE_INFINITY,
+      backdropBlur: "7",
     },
     search: {
       provider: "unknown",
@@ -89,26 +60,15 @@ test("invalid persisted values fall back to safe defaults", () => {
   assert.notEqual(settings, DEFAULT_SETTINGS);
 });
 
-test("removed home link settings are discarded", () => {
+test("unsupported settings schemas reset to current defaults", () => {
   const settings = sanitizeSettings({
-    home: {
-      topLinks: [
-        { id: "one", title: "One", url: "https://example.com" },
-        { id: "duplicate", title: "Duplicate", url: "https://example.com/" },
-        { id: "unsafe", title: "Unsafe", url: "javascript:alert(1)" },
-      ],
-      grid: {
-        mode: "custom",
-        columns: 99,
-        rows: -5,
-        customLinks: [
-          { id: "two", title: "Two", url: "http://example.org/path" },
-        ],
-      },
+    version: 0,
+    appearance: {
+      theme: "dark",
     },
   });
 
-  assert.equal("home" in settings, false);
+  assert.deepEqual(settings, DEFAULT_SETTINGS);
 });
 
 test("background rejects unsupported persisted data", () => {

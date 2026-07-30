@@ -228,6 +228,29 @@ try {
     await page.locator("#open-settings").click();
     await page.locator(".settings-card").waitFor();
   };
+  const glassPanelSelectors = [
+    "#bookmark-sidebar",
+    ".sidebar-rail-button",
+    "#web-search-input",
+    ".open-settings-button",
+    ".settings-card",
+  ];
+  const assertPanelStyles = async (selectors, expected) => {
+    const actual = await page.evaluate((targetSelectors) => {
+      return targetSelectors.map((selector) => {
+        const element = globalThis.document.querySelector(selector);
+        if (!element) {
+          throw new Error(`Panel is missing: ${selector}`);
+        }
+        const style = globalThis.getComputedStyle(element);
+        return {
+          background: style.backgroundColor,
+          blur: style.backdropFilter,
+        };
+      });
+    }, selectors);
+    assert.deepEqual(actual, expected);
+  };
 
   await openSettings();
   assert.equal(
@@ -326,6 +349,22 @@ try {
   record("integrated sidebar bookmark filtering");
 
   await openSettings();
+  assert.equal(
+    await page.locator("#settings-panel-transparency").isDisabled(),
+    true,
+  );
+  assert.equal(
+    await page.locator("#settings-backdrop-blur").isDisabled(),
+    true,
+  );
+  await assertPanelStyles(
+    ["#bookmark-sidebar", "#web-search-input", ".settings-card"],
+    [
+      { background: "rgba(255, 255, 255, 0.8)", blur: "blur(7px)" },
+      { background: "rgb(255, 255, 255)", blur: "none" },
+      { background: "rgba(255, 255, 255, 0.8)", blur: "blur(7px)" },
+    ],
+  );
   await page.locator("#settings-search-provider").selectOption("bing");
   await page.waitForFunction(
     () =>
@@ -489,17 +528,102 @@ try {
     buffer: png,
   });
   await page.locator("body.has-custom-background").waitFor();
+  assert.equal(
+    await page.locator("#settings-panel-transparency").isEnabled(),
+    true,
+  );
+  assert.equal(await page.locator("#settings-backdrop-blur").isEnabled(), true);
+  await page.locator("#settings-panel-transparency").fill("55");
+  await page.locator("#settings-backdrop-blur").fill("18");
+  await page.waitForFunction(async () => {
+    const stored = await chrome.storage.sync.get("settings");
+    return (
+      stored.settings.appearance.panelTransparency === 55 &&
+      stored.settings.appearance.backdropBlur === 18
+    );
+  });
+  const lightGlassStyles = glassPanelSelectors.map(() => ({
+    background: "rgba(255, 255, 255, 0.45)",
+    blur: "blur(18px)",
+  }));
+  await assertPanelStyles(glassPanelSelectors, lightGlassStyles);
   await page.locator(".settings-card").press("Escape");
   await page.reload();
   await page.locator("body.has-custom-background").waitFor();
-  record("local background saves immediately");
-
   await openSettings();
+  assert.equal(
+    await page.locator("#settings-panel-transparency").inputValue(),
+    "55",
+  );
+  assert.equal(
+    await page.locator("#settings-backdrop-blur").inputValue(),
+    "18",
+  );
+  await assertPanelStyles(glassPanelSelectors, lightGlassStyles);
+  record("custom glass settings preview immediately and persist");
+
+  await page.locator("#settings-theme").selectOption("dark");
+  await page.waitForFunction(
+    () =>
+      globalThis.getComputedStyle(
+        globalThis.document.querySelector("#bookmark-sidebar"),
+      ).backgroundColor === "rgba(0, 0, 0, 0.45)",
+  );
+  const darkGlassStyles = glassPanelSelectors.map(() => ({
+    background: "rgba(0, 0, 0, 0.45)",
+    blur: "blur(18px)",
+  }));
+  await assertPanelStyles(glassPanelSelectors, darkGlassStyles);
   await page.locator("#settings-remove-background").click();
   await page
     .locator("body.has-custom-background")
     .waitFor({ state: "detached" });
-  await page.locator("#settings-theme").selectOption("dark");
+  assert.equal(
+    await page.locator("#settings-panel-transparency").isDisabled(),
+    true,
+  );
+  assert.equal(
+    await page.locator("#settings-backdrop-blur").isDisabled(),
+    true,
+  );
+  await assertPanelStyles(
+    ["#bookmark-sidebar", "#web-search-input", ".settings-card"],
+    [
+      { background: "rgba(0, 0, 0, 0.8)", blur: "blur(7px)" },
+      { background: "rgb(77, 77, 77)", blur: "none" },
+      { background: "rgba(0, 0, 0, 0.8)", blur: "blur(7px)" },
+    ],
+  );
+  const retainedGlassSettings = await page.evaluate(async () => {
+    const stored = await chrome.storage.sync.get("settings");
+    return {
+      panelTransparency: stored.settings.appearance.panelTransparency,
+      backdropBlur: stored.settings.appearance.backdropBlur,
+    };
+  });
+  assert.deepEqual(retainedGlassSettings, {
+    panelTransparency: 55,
+    backdropBlur: 18,
+  });
+  await page.locator("#settings-background-file").setInputFiles({
+    name: "background.png",
+    mimeType: "image/png",
+    buffer: png,
+  });
+  await page.locator("body.has-custom-background").waitFor();
+  assert.equal(
+    await page.locator("#settings-panel-transparency").inputValue(),
+    "55",
+  );
+  assert.equal(
+    await page.locator("#settings-backdrop-blur").inputValue(),
+    "18",
+  );
+  await assertPanelStyles(glassPanelSelectors, darkGlassStyles);
+  await page.locator("#settings-remove-background").click();
+  await page
+    .locator("body.has-custom-background")
+    .waitFor({ state: "detached" });
   await page.locator(".settings-card").press("Escape");
   await page.reload();
   await page.waitForSelector("#app");
@@ -513,7 +637,7 @@ try {
   await page.screenshot({
     path: path.join(screenshotsPath, "bookmark-home-dark.png"),
   });
-  record("dark transparent preset");
+  record("glass settings follow theme and survive background removal");
 
   await page.setViewportSize({ width: 640, height: 900 });
   await openSettings();

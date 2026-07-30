@@ -2,7 +2,7 @@ import { t } from "../core/i18n";
 import type { SettingsStore } from "../core/settings";
 import type {
   SearchProviderId,
-  SettingsV3,
+  SettingsV4,
   ThemePreference,
 } from "../core/types";
 import { prepareBackground } from "../home/background";
@@ -10,7 +10,7 @@ import { isValidCustomSearchUrl, SEARCH_PROVIDERS } from "../search/providers";
 
 interface SettingsCardContext {
   store: SettingsStore;
-  previewAppearance: (appearance: SettingsV3["appearance"]) => void;
+  previewAppearance: (appearance: SettingsV4["appearance"]) => void;
   showToast: (message: string) => void;
   trigger: HTMLElement;
 }
@@ -40,6 +40,29 @@ function checkbox(label: string): {
   const wrapper = field(label, input);
   wrapper.classList.add("settings-switch");
   return { wrapper, input };
+}
+
+function range(
+  label: string,
+  id: string,
+  min: number,
+  max: number,
+): {
+  wrapper: HTMLLabelElement;
+  input: HTMLInputElement;
+  output: HTMLOutputElement;
+} {
+  const input = document.createElement("input");
+  input.id = id;
+  input.type = "range";
+  input.min = String(min);
+  input.max = String(max);
+  input.step = "1";
+  const output = document.createElement("output");
+  const wrapper = field(label, input);
+  wrapper.classList.add("range-field");
+  wrapper.append(output);
+  return { wrapper, input, output };
 }
 
 function section(title: string): HTMLElement {
@@ -97,16 +120,11 @@ export function openSettingsCard(context: SettingsCardContext): void {
     option("relaxed", t("relaxed")),
   );
 
-  const width = document.createElement("input");
-  width.id = "settings-sidebar-width";
-  width.type = "range";
-  width.min = "260";
-  width.max = "480";
-  width.step = "1";
-  const widthOutput = document.createElement("output");
-  const widthField = field(t("sidebarWidth"), width);
-  widthField.classList.add("range-field");
-  widthField.append(widthOutput);
+  const {
+    wrapper: widthField,
+    input: width,
+    output: widthOutput,
+  } = range(t("sidebarWidth"), "settings-sidebar-width", 260, 480);
 
   const collapsed = checkbox(t("collapseBookmarks"));
   collapsed.input.id = "settings-sidebar-collapsed";
@@ -135,7 +153,24 @@ export function openSettingsCard(context: SettingsCardContext): void {
   removeBackground.className = "button";
   removeBackground.textContent = t("removeBackground");
   backgroundActions.append(upload, removeBackground);
-  background.append(backgroundInput, backgroundActions);
+
+  const {
+    wrapper: panelTransparencyField,
+    input: panelTransparency,
+    output: panelTransparencyOutput,
+  } = range(t("panelTransparency"), "settings-panel-transparency", 0, 90);
+  const {
+    wrapper: backdropBlurField,
+    input: backdropBlur,
+    output: backdropBlurOutput,
+  } = range(t("backdropBlur"), "settings-backdrop-blur", 0, 30);
+
+  background.append(
+    backgroundInput,
+    backgroundActions,
+    panelTransparencyField,
+    backdropBlurField,
+  );
 
   const search = section(t("search"));
   const provider = document.createElement("select");
@@ -184,12 +219,25 @@ export function openSettingsCard(context: SettingsCardContext): void {
     customUrlField.hidden = !visible;
   };
 
-  const sync = (settings: SettingsV3): void => {
+  const appearanceFromControls = (): SettingsV4["appearance"] => ({
+    theme: theme.value as ThemePreference,
+    sidebarWidth: Number(width.value),
+    sidebarCollapsed: collapsed.input.checked,
+    sidebarDensity: density.value as SettingsV4["appearance"]["sidebarDensity"],
+    panelTransparency: Number(panelTransparency.value),
+    backdropBlur: Number(backdropBlur.value),
+  });
+
+  const sync = (settings: SettingsV4): void => {
     theme.value = settings.appearance.theme;
     width.value = String(settings.appearance.sidebarWidth);
     widthOutput.textContent = `${settings.appearance.sidebarWidth}px`;
     collapsed.input.checked = settings.appearance.sidebarCollapsed;
     density.value = settings.appearance.sidebarDensity;
+    panelTransparency.value = String(settings.appearance.panelTransparency);
+    panelTransparencyOutput.textContent = `${settings.appearance.panelTransparency}%`;
+    backdropBlur.value = String(settings.appearance.backdropBlur);
+    backdropBlurOutput.textContent = `${settings.appearance.backdropBlur}px`;
     provider.value = settings.search.provider;
     customName.value = settings.search.customName;
     customUrl.value = settings.search.customSearchUrl;
@@ -197,6 +245,8 @@ export function openSettingsCard(context: SettingsCardContext): void {
     online.input.checked = settings.search.onlineSuggestions;
     const currentBackground = context.store.homeBackground;
     removeBackground.hidden = !currentBackground;
+    panelTransparency.disabled = !currentBackground;
+    backdropBlur.disabled = !currentBackground;
     showCustomSearch();
   };
 
@@ -205,8 +255,24 @@ export function openSettingsCard(context: SettingsCardContext): void {
       await action();
     } catch {
       sync(context.store.settings);
+      context.previewAppearance(context.store.settings.appearance);
       context.showToast(t("unableToSave"));
     }
+  };
+
+  const bindAppearanceRange = (
+    input: HTMLInputElement,
+    output: HTMLOutputElement,
+    suffix: string,
+    save: (value: number) => Promise<void>,
+  ): void => {
+    input.addEventListener("input", () => {
+      output.textContent = `${input.value}${suffix}`;
+      context.previewAppearance(appearanceFromControls());
+    });
+    input.addEventListener("change", () => {
+      void persist(() => save(Number(input.value)));
+    });
   };
 
   sync(context.store.settings);
@@ -291,25 +357,13 @@ export function openSettingsCard(context: SettingsCardContext): void {
     void persist(() =>
       context.store.updateAppearance({
         sidebarDensity:
-          density.value as SettingsV3["appearance"]["sidebarDensity"],
+          density.value as SettingsV4["appearance"]["sidebarDensity"],
       }),
     );
   });
-  width.addEventListener("input", () => {
-    const next = {
-      ...context.store.settings.appearance,
-      sidebarWidth: Number(width.value),
-    };
-    widthOutput.textContent = `${next.sidebarWidth}px`;
-    context.previewAppearance(next);
-  });
-  width.addEventListener("change", () => {
-    void persist(() =>
-      context.store.updateAppearance({
-        sidebarWidth: Number(width.value),
-      }),
-    );
-  });
+  bindAppearanceRange(width, widthOutput, "px", (sidebarWidth) =>
+    context.store.updateAppearance({ sidebarWidth }),
+  );
   collapsed.input.addEventListener("change", () => {
     void persist(() =>
       context.store.updateAppearance({
@@ -317,6 +371,16 @@ export function openSettingsCard(context: SettingsCardContext): void {
       }),
     );
   });
+  bindAppearanceRange(
+    panelTransparency,
+    panelTransparencyOutput,
+    "%",
+    (panelTransparency) =>
+      context.store.updateAppearance({ panelTransparency }),
+  );
+  bindAppearanceRange(backdropBlur, backdropBlurOutput, "px", (backdropBlur) =>
+    context.store.updateAppearance({ backdropBlur }),
+  );
 
   provider.addEventListener("change", () => {
     showCustomSearch();
