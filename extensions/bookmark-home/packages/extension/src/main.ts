@@ -4,7 +4,7 @@ import { ChromeBookmarkRepository } from "./bookmarks/chrome-repository";
 import { BookmarkSidebar } from "./bookmarks/sidebar";
 import { localizeDocument, t } from "./core/i18n";
 import { applyTheme, SettingsStore } from "./core/settings";
-import type { SettingsV2 } from "./core/types";
+import type { SettingsV3 } from "./core/types";
 import { HomeController } from "./home/controller";
 import { SearchController } from "./search/controller";
 import { SuggestionEngine } from "./search/suggestion-engine";
@@ -20,6 +20,7 @@ function requiredElement<T extends Element>(selector: string): T {
 const settingsStore = new SettingsStore();
 const repository = new ChromeBookmarkRepository();
 let toastTimer = 0;
+let bookmarkSidebar: BookmarkSidebar | null = null;
 
 function showToast(message: string): void {
   const toast = requiredElement<HTMLElement>("#toast");
@@ -31,8 +32,15 @@ function showToast(message: string): void {
   }, 2_800);
 }
 
-function applyAppearance(appearance: SettingsV2["appearance"]): void {
+function sidebarRowHeight(): number {
+  return Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--row-height"),
+  );
+}
+
+function applyAppearance(appearance: SettingsV3["appearance"]): void {
   applyTheme(appearance.theme);
+  document.documentElement.dataset.sidebarDensity = appearance.sidebarDensity;
   document.documentElement.style.setProperty(
     "--sidebar-width",
     `${appearance.sidebarWidth}px`,
@@ -41,13 +49,21 @@ function applyAppearance(appearance: SettingsV2["appearance"]): void {
     "sidebar-collapsed",
     appearance.sidebarCollapsed,
   );
+  bookmarkSidebar?.setRowHeight(sidebarRowHeight());
 }
 
-function openSettings(): void {
-  void import("./settings/drawer").then(({ openSettingsDrawer }) => {
-    openSettingsDrawer({
+function openSettings(trigger: HTMLElement): void {
+  const existing = document.querySelector<HTMLElement>(".settings-card");
+  if (existing) {
+    existing.querySelector<HTMLButtonElement>(".settings-close")?.click();
+    return;
+  }
+  void import("./settings/card").then(({ openSettingsCard }) => {
+    openSettingsCard({
       store: settingsStore,
       previewAppearance: applyAppearance,
+      showToast,
+      trigger,
     });
   });
 }
@@ -97,7 +113,7 @@ function bindSidebarLayout(): void {
       });
       popover.append(button);
     };
-    addAction(t("settings"), openSettings);
+    addAction(t("settings"), () => openSettings(menu));
     addAction(t("collapseBookmarks"), () => {
       void settingsStore.updateAppearance({ sidebarCollapsed: true });
     });
@@ -156,7 +172,7 @@ async function run(): Promise<void> {
   applyAppearance(settingsStore.settings.appearance);
   bindSidebarLayout();
 
-  const sidebar = new BookmarkSidebar(
+  bookmarkSidebar = new BookmarkSidebar(
     repository,
     {
       viewport: requiredElement("#bookmark-tree"),
@@ -172,6 +188,7 @@ async function run(): Promise<void> {
       onExpandedChange: (ids) => {
         void settingsStore.saveExpandedFolderIds(ids);
       },
+      rowHeight: sidebarRowHeight(),
     },
   );
   const search = new SearchController(
@@ -185,7 +202,7 @@ async function run(): Promise<void> {
   );
   search.initialize();
 
-  await sidebar.initialize(settingsStore.expandedFolderIds);
+  await bookmarkSidebar.initialize(settingsStore.expandedFolderIds);
   bindBookmarkCount();
 
   const home = new HomeController(settingsStore.homeBackground);
@@ -197,26 +214,10 @@ async function run(): Promise<void> {
     home.update(settingsStore.homeBackground);
   });
 
-  requiredElement<HTMLButtonElement>("#edit-home").addEventListener(
-    "click",
-    () => {
-      void import("./home/editor").then(({ openHomeEditor }) => {
-        openHomeEditor({
-          store: settingsStore,
-          preview: (settings, background) => {
-            search.updateSettings(settings.search);
-            home.preview(background);
-          },
-          cancelPreview: () => {
-            const settings = settingsStore.settings;
-            search.updateSettings(settings.search);
-            home.update(settingsStore.homeBackground);
-          },
-          showToast,
-        });
-      });
-    },
-  );
+  const settingsButton = requiredElement<HTMLButtonElement>("#open-settings");
+  settingsButton.addEventListener("click", () => {
+    openSettings(settingsButton);
+  });
 
   performance.mark("bookmark-home:ready");
 }

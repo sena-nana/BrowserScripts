@@ -6,7 +6,7 @@ import type {
   BookmarkEventListener,
   BookmarkNode,
   BookmarkRepository,
-  SettingsV2,
+  SettingsV3,
 } from "../core/types";
 import { SuggestionEngine } from "./suggestion-engine";
 
@@ -75,7 +75,7 @@ class IndexedRepository implements BookmarkRepository {
   }
 }
 
-const localOnly: SettingsV2["search"] = {
+const localOnly: SettingsV3["search"] = {
   provider: "google",
   customName: "",
   customSearchUrl: "https://example.com/?q={query}",

@@ -2,7 +2,8 @@ import type {
   HomeBackgroundV1,
   LocalUiStateV1,
   SearchProviderId,
-  SettingsV2,
+  SettingsV3,
+  SidebarDensity,
   ThemePreference,
 } from "./types";
 
@@ -11,12 +12,13 @@ const LOCAL_UI_KEY = "uiState";
 const HOME_BACKGROUND_KEY = "homeBackground";
 const MAX_BACKGROUND_DATA_URL_LENGTH = 5_600_000;
 
-export const DEFAULT_SETTINGS: SettingsV2 = {
-  version: 2,
+export const DEFAULT_SETTINGS: SettingsV3 = {
+  version: 3,
   appearance: {
     theme: "system",
     sidebarWidth: 350,
     sidebarCollapsed: false,
+    sidebarDensity: "standard",
   },
   search: {
     provider: "google",
@@ -32,7 +34,7 @@ const DEFAULT_LOCAL_UI: LocalUiStateV1 = {
   expandedFolderIds: [],
 };
 
-type SettingsListener = (settings: SettingsV2) => void;
+type SettingsListener = (settings: SettingsV3) => void;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -51,20 +53,24 @@ function isProvider(value: unknown): value is SearchProviderId {
   );
 }
 
+function isSidebarDensity(value: unknown): value is SidebarDensity {
+  return value === "compact" || value === "standard" || value === "relaxed";
+}
+
 function boundedWidth(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.min(480, Math.max(260, Math.round(value)))
     : DEFAULT_SETTINGS.appearance.sidebarWidth;
 }
 
-export function sanitizeSettings(value: unknown): SettingsV2 {
+export function sanitizeSettings(value: unknown): SettingsV3 {
   if (!isRecord(value)) {
     return structuredClone(DEFAULT_SETTINGS);
   }
   const appearance = isRecord(value.appearance) ? value.appearance : {};
   const search = isRecord(value.search) ? value.search : {};
   return {
-    version: 2,
+    version: 3,
     appearance: {
       theme: isTheme(appearance.theme)
         ? appearance.theme
@@ -74,6 +80,9 @@ export function sanitizeSettings(value: unknown): SettingsV2 {
         typeof appearance.sidebarCollapsed === "boolean"
           ? appearance.sidebarCollapsed
           : DEFAULT_SETTINGS.appearance.sidebarCollapsed,
+      sidebarDensity: isSidebarDensity(appearance.sidebarDensity)
+        ? appearance.sidebarDensity
+        : DEFAULT_SETTINGS.appearance.sidebarDensity,
     },
     search: {
       provider: isProvider(search.provider)
@@ -140,34 +149,12 @@ export function sanitizeHomeBackground(
   };
 }
 
-export interface HomeDraftPersistence {
-  saveSettings(settings: SettingsV2): Promise<void>;
-  saveBackground(background: HomeBackgroundV1 | null): Promise<void>;
-}
-
-export async function persistHomeDraftWithRollback(
-  persistence: HomeDraftPersistence,
-  nextSettings: SettingsV2,
-  nextBackground: HomeBackgroundV1 | null,
-  previousSettings: SettingsV2,
-  previousBackground: HomeBackgroundV1 | null,
-): Promise<void> {
-  try {
-    await persistence.saveSettings(nextSettings);
-    await persistence.saveBackground(nextBackground);
-  } catch (error) {
-    await Promise.allSettled([
-      persistence.saveSettings(previousSettings),
-      persistence.saveBackground(previousBackground),
-    ]);
-    throw error;
-  }
-}
-
 export class SettingsStore {
   #settings = structuredClone(DEFAULT_SETTINGS);
   #localUi = structuredClone(DEFAULT_LOCAL_UI);
   #homeBackground: HomeBackgroundV1 | null = null;
+  #settingsWrite = Promise.resolve();
+  #backgroundWrite = Promise.resolve();
   readonly #listeners = new Set<SettingsListener>();
 
   async load(): Promise<void> {
@@ -188,7 +175,7 @@ export class SettingsStore {
     this.#listeners.clear();
   }
 
-  get settings(): SettingsV2 {
+  get settings(): SettingsV3 {
     return structuredClone(this.#settings);
   }
 
@@ -206,59 +193,38 @@ export class SettingsStore {
   }
 
   async updateAppearance(
-    changes: Partial<SettingsV2["appearance"]>,
+    changes: Partial<SettingsV3["appearance"]>,
   ): Promise<void> {
-    await this.#save({
-      ...this.#settings,
-      appearance: { ...this.#settings.appearance, ...changes },
-    });
+    await this.#enqueueSettingsUpdate((settings) => ({
+      ...settings,
+      appearance: { ...settings.appearance, ...changes },
+    }));
   }
 
-  async updateSearch(changes: Partial<SettingsV2["search"]>): Promise<void> {
-    await this.#save({
-      ...this.#settings,
-      search: { ...this.#settings.search, ...changes },
-    });
+  async updateSearch(changes: Partial<SettingsV3["search"]>): Promise<void> {
+    await this.#enqueueSettingsUpdate((settings) => ({
+      ...settings,
+      search: { ...settings.search, ...changes },
+    }));
   }
 
-  async saveHomeDraft(
-    settings: SettingsV2,
+  async updateHomeBackground(
     background: HomeBackgroundV1 | null,
   ): Promise<void> {
-    const previousSettings = this.settings;
-    const previousBackground = this.homeBackground;
-    const nextSettings = sanitizeSettings(settings);
     const nextBackground = sanitizeHomeBackground(background);
-    const persistence: HomeDraftPersistence = {
-      saveSettings: (value) =>
-        chrome.storage.sync.set({ [SETTINGS_KEY]: value }),
-      saveBackground: async (value) => {
-        if (value) {
-          await chrome.storage.local.set({
-            [HOME_BACKGROUND_KEY]: value,
-          });
-        } else {
-          await chrome.storage.local.remove(HOME_BACKGROUND_KEY);
-        }
-      },
-    };
-    try {
-      await persistHomeDraftWithRollback(
-        persistence,
-        nextSettings,
-        nextBackground,
-        previousSettings,
-        previousBackground,
-      );
-      this.#settings = nextSettings;
+    const operation = this.#backgroundWrite.then(async () => {
+      if (nextBackground) {
+        await chrome.storage.local.set({
+          [HOME_BACKGROUND_KEY]: nextBackground,
+        });
+      } else {
+        await chrome.storage.local.remove(HOME_BACKGROUND_KEY);
+      }
       this.#homeBackground = nextBackground;
       this.#emit();
-    } catch (error) {
-      this.#settings = previousSettings;
-      this.#homeBackground = previousBackground;
-      this.#emit();
-      throw error;
-    }
+    });
+    this.#backgroundWrite = operation.catch(() => undefined);
+    await operation;
   }
 
   async saveExpandedFolderIds(ids: Iterable<string>): Promise<void> {
@@ -269,10 +235,17 @@ export class SettingsStore {
     await chrome.storage.local.set({ [LOCAL_UI_KEY]: this.#localUi });
   }
 
-  async #save(next: SettingsV2): Promise<void> {
-    this.#settings = sanitizeSettings(next);
-    await chrome.storage.sync.set({ [SETTINGS_KEY]: this.#settings });
-    this.#emit();
+  async #enqueueSettingsUpdate(
+    update: (settings: SettingsV3) => SettingsV3,
+  ): Promise<void> {
+    const operation = this.#settingsWrite.then(async () => {
+      const next = sanitizeSettings(update(this.settings));
+      await chrome.storage.sync.set({ [SETTINGS_KEY]: next });
+      this.#settings = next;
+      this.#emit();
+    });
+    this.#settingsWrite = operation.catch(() => undefined);
+    await operation;
   }
 
   readonly #handleStorageChange = (

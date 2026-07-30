@@ -7,7 +7,6 @@ import {
 } from "../ui/dialogs";
 import { BookmarkTreeModel } from "./tree-model";
 
-const ROW_HEIGHT = 38;
 const OVERSCAN = 7;
 
 interface SidebarElements {
@@ -32,6 +31,7 @@ export class BookmarkSidebar {
   #searchSequence = 0;
   #renderFrame = 0;
   #markedFirstRows = false;
+  #rowHeight: number;
 
   constructor(
     repository: BookmarkRepository,
@@ -39,12 +39,14 @@ export class BookmarkSidebar {
     options: {
       showToast: (message: string) => void;
       onExpandedChange: (ids: ReadonlySet<string>) => void;
+      rowHeight: number;
     },
   ) {
     this.model = new BookmarkTreeModel(repository);
     this.#elements = elements;
     this.#showToast = options.showToast;
     this.#onExpandedChange = options.onExpandedChange;
+    this.#rowHeight = options.rowHeight;
   }
 
   async initialize(expandedIds: ReadonlySet<string>): Promise<void> {
@@ -64,6 +66,20 @@ export class BookmarkSidebar {
     this.model.dispose();
     window.clearTimeout(this.#filterTimer);
     window.cancelAnimationFrame(this.#renderFrame);
+  }
+
+  setRowHeight(rowHeight: number): void {
+    if (
+      !Number.isFinite(rowHeight) ||
+      rowHeight <= 0 ||
+      rowHeight === this.#rowHeight
+    ) {
+      return;
+    }
+    const scrollRow = this.#elements.viewport.scrollTop / this.#rowHeight;
+    this.#rowHeight = rowHeight;
+    this.#elements.viewport.scrollTop = scrollRow * rowHeight;
+    this.#render();
   }
 
   #bindEvents(): void {
@@ -117,7 +133,7 @@ export class BookmarkSidebar {
   #render(): void {
     const { viewport, spacer, content, empty } = this.#elements;
     const total = this.#rows.length;
-    spacer.style.height = `${Math.max(viewport.clientHeight, total * ROW_HEIGHT)}px`;
+    spacer.style.height = `${Math.max(viewport.clientHeight, total * this.#rowHeight)}px`;
     empty.hidden = total > 0;
     empty.textContent = t("noBookmarks");
     if (total === 0) {
@@ -126,10 +142,10 @@ export class BookmarkSidebar {
     }
     const start = Math.max(
       0,
-      Math.floor(viewport.scrollTop / ROW_HEIGHT) - OVERSCAN,
+      Math.floor(viewport.scrollTop / this.#rowHeight) - OVERSCAN,
     );
     const visibleCount =
-      Math.ceil(viewport.clientHeight / ROW_HEIGHT) + OVERSCAN * 2;
+      Math.ceil(viewport.clientHeight / this.#rowHeight) + OVERSCAN * 2;
     const end = Math.min(total, start + visibleCount);
     const fragment = document.createDocumentFragment();
     for (let index = start; index < end; index += 1) {
@@ -156,7 +172,7 @@ export class BookmarkSidebar {
       String(row.node.id === this.#selectedId),
     );
     element.style.setProperty("--tree-depth", String(row.depth));
-    element.style.transform = `translateY(${index * ROW_HEIGHT}px)`;
+    element.style.transform = `translateY(${index * this.#rowHeight}px)`;
     if (row.node.id === this.#selectedId) {
       element.classList.add("is-selected");
     }
@@ -455,8 +471,8 @@ export class BookmarkSidebar {
   }
 
   #scrollRowIntoView(index: number): void {
-    const top = index * ROW_HEIGHT;
-    const bottom = top + ROW_HEIGHT;
+    const top = index * this.#rowHeight;
+    const bottom = top + this.#rowHeight;
     const viewport = this.#elements.viewport;
     if (top < viewport.scrollTop) {
       viewport.scrollTop = top;

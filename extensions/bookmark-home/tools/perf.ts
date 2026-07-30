@@ -189,11 +189,12 @@ try {
         }
       | undefined;
     const settings = persistedSettings ?? {
-      version: 1,
+      version: 3,
       appearance: {
         theme: "system",
         sidebarWidth: 320,
         sidebarCollapsed: false,
+        sidebarDensity: "standard",
       },
       search: {
         provider: "google",
