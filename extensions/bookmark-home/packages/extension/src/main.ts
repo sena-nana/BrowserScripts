@@ -122,6 +122,17 @@ function bindSidebarLayout(): void {
       });
       popover.append(button);
     };
+    if (bookmarkSidebar?.hasTrash) {
+      if (bookmarkSidebar.scope === "trash") {
+        addAction(t("bookmarks"), () => {
+          void bookmarkSidebar?.setScope("bookmarks");
+        });
+      } else {
+        addAction(t("trash"), () => {
+          void bookmarkSidebar?.setScope("trash");
+        });
+      }
+    }
     addAction(t("settings"), () => openSettings(menu));
     addAction(t("collapseBookmarks"), () => {
       void settingsStore.updateAppearance({ sidebarCollapsed: true });
@@ -161,21 +172,6 @@ function bindSidebarLayout(): void {
   });
 }
 
-function bindBookmarkCount(): void {
-  const output = requiredElement<HTMLElement>("#bookmark-count");
-  let timer = 0;
-  const update = async (): Promise<void> => {
-    const nodes = await repository.getAll();
-    output.textContent = String(nodes.filter((node) => node.url).length);
-  };
-  const schedule = (): void => {
-    window.clearTimeout(timer);
-    timer = window.setTimeout(() => void update(), 80);
-  };
-  repository.subscribe(schedule);
-  void update();
-}
-
 async function run(): Promise<void> {
   performance.mark("bookmark-home:bootstrap");
   localizeDocument();
@@ -193,6 +189,8 @@ async function run(): Promise<void> {
       empty: requiredElement("#tree-empty"),
       filter: requiredElement("#bookmark-filter"),
       add: requiredElement("#add-bookmark-item"),
+      title: requiredElement(".sidebar-title > span"),
+      count: requiredElement("#bookmark-count"),
       popoverRoot: requiredElement("#popover-root"),
     },
     {
@@ -215,7 +213,6 @@ async function run(): Promise<void> {
   search.initialize();
 
   await bookmarkSidebar.initialize(settingsStore.expandedFolderIds);
-  bindBookmarkCount();
 
   const home = new HomeController(settingsStore.homeBackground);
   home.initialize();

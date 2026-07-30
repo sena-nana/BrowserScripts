@@ -121,7 +121,7 @@ const largeModel = new BookmarkTreeModel(new LargeBookmarkRepository(10_000));
 await largeModel.initialize(new Set());
 const modelRows = largeModel.rows();
 const modelDuration = performance.now() - modelStart;
-assert.equal(modelRows.length, 10_002);
+assert.equal(modelRows.length, 10_000);
 largeModel.dispose();
 
 const mainJsBytes = await fileSize(path.join(extensionPath, "main.js"));

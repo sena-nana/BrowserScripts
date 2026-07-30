@@ -176,6 +176,42 @@ export async function openEntryDialog(options: {
 }
 
 export async function confirmDelete(node: BookmarkNode): Promise<boolean> {
+  return confirmDestructiveAction({
+    heading: t(node.url ? "deleteBookmark" : "deleteFolder"),
+    copy: t(node.url ? "confirmDeleteBookmark" : "confirmDeleteFolder"),
+    action: t("delete"),
+  });
+}
+
+export async function confirmPermanentDelete(
+  node: BookmarkNode,
+): Promise<boolean> {
+  return confirmDestructiveAction({
+    heading: t(
+      node.url ? "permanentlyDeleteBookmark" : "permanentlyDeleteFolder",
+    ),
+    copy: t(
+      node.url
+        ? "confirmPermanentlyDeleteBookmark"
+        : "confirmPermanentlyDeleteFolder",
+    ),
+    action: t("permanentlyDelete"),
+  });
+}
+
+export async function confirmEmptyTrash(): Promise<boolean> {
+  return confirmDestructiveAction({
+    heading: t("emptyTrash"),
+    copy: t("confirmEmptyTrash"),
+    action: t("emptyTrash"),
+  });
+}
+
+function confirmDestructiveAction(options: {
+  heading: string;
+  copy: string;
+  action: string;
+}): Promise<boolean> {
   return new Promise((resolve) => {
     const backdrop = createBackdrop();
     const modal = document.createElement("section");
@@ -184,15 +220,13 @@ export async function confirmDelete(node: BookmarkNode): Promise<boolean> {
     modal.setAttribute("aria-modal", "true");
 
     const heading = document.createElement("h2");
-    heading.textContent = t(node.url ? "deleteBookmark" : "deleteFolder");
+    heading.textContent = options.heading;
     const copy = document.createElement("p");
-    copy.textContent = t(
-      node.url ? "confirmDeleteBookmark" : "confirmDeleteFolder",
-    );
+    copy.textContent = options.copy;
     const actions = document.createElement("div");
     actions.className = "modal-actions";
     const cancel = button(t("cancel"));
-    const remove = button(t("delete"), "button danger");
+    const remove = button(options.action, "button danger");
     actions.append(cancel, remove);
     modal.append(heading, copy, actions);
     backdrop.append(modal);
@@ -215,6 +249,7 @@ export async function confirmDelete(node: BookmarkNode): Promise<boolean> {
 export async function chooseDestination(
   folders: BookmarkNode[],
   currentParentId: string | undefined,
+  mode: "move" | "restore" = "move",
 ): Promise<string | null> {
   return new Promise((resolve) => {
     const backdrop = createBackdrop();
@@ -223,7 +258,7 @@ export async function chooseDestination(
     form.setAttribute("role", "dialog");
     form.setAttribute("aria-modal", "true");
     const heading = document.createElement("h2");
-    heading.textContent = t("moveTo");
+    heading.textContent = t(mode === "restore" ? "restoreTo" : "moveTo");
     const select = document.createElement("select");
     for (const folder of folders) {
       const option = document.createElement("option");
@@ -235,7 +270,10 @@ export async function chooseDestination(
     const actions = document.createElement("div");
     actions.className = "modal-actions";
     const cancel = button(t("cancel"));
-    const move = button(t("move"), "button primary");
+    const move = button(
+      t(mode === "restore" ? "restore" : "move"),
+      "button primary",
+    );
     move.type = "submit";
     actions.append(cancel, move);
     form.append(heading, field(t("folder"), select), actions);

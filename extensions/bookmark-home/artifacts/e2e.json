@@ -1,11 +1,11 @@
 {
-  "startedAt": "2026-07-30T09:00:16.100Z",
-  "completedAt": "2026-07-30T09:00:22.923Z",
+  "startedAt": "2026-07-30T09:31:51.978Z",
+  "completedAt": "2026-07-30T09:31:58.744Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
     "transparent preset desktop layout",
-    "root bookmark folders remain protected in the context menu",
+    "system roots stay hidden and unsupported trash is omitted",
     "create bookmark through UI",
     "edit bookmark title and URL through the context menu",
     "edit folder title through the context menu",

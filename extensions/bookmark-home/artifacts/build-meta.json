@@ -25,7 +25,7 @@
       "imports": []
     },
     "src/styles.css": {
-      "bytes": 19395,
+      "bytes": 19662,
       "imports": [
         {
           "path": "src/assets/folder.svg",
@@ -60,17 +60,17 @@
       ]
     },
     "src/bookmarks/chrome-repository.ts": {
-      "bytes": 5587,
+      "bytes": 5759,
       "imports": [],
       "format": "esm"
     },
     "src/core/i18n.ts": {
-      "bytes": 5488,
+      "bytes": 6865,
       "imports": [],
       "format": "esm"
     },
     "src/ui/dialogs.ts": {
-      "bytes": 7865,
+      "bytes": 8816,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -81,12 +81,12 @@
       "format": "esm"
     },
     "src/bookmarks/tree-model.ts": {
-      "bytes": 9432,
+      "bytes": 14526,
       "imports": [],
       "format": "esm"
     },
     "src/bookmarks/sidebar.ts": {
-      "bytes": 16744,
+      "bytes": 20613,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -175,7 +175,7 @@
       "format": "esm"
     },
     "src/main.ts": {
-      "bytes": 8012,
+      "bytes": 7946,
       "imports": [
         {
           "path": "src/styles.css",
@@ -230,11 +230,11 @@
     "dist/main.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-X7EAATPG.js",
+          "path": "dist/chunks/chunk-G73PBDPY.js",
           "kind": "import-statement"
         },
         {
-          "path": "dist/chunks/card-GZTCGQM2.js",
+          "path": "dist/chunks/card-CPUOBMEM.js",
           "kind": "dynamic-import"
         }
       ],
@@ -246,16 +246,16 @@
           "bytesInOutput": 0
         },
         "src/bookmarks/chrome-repository.ts": {
-          "bytesInOutput": 2542
+          "bytesInOutput": 2589
         },
         "src/ui/dialogs.ts": {
-          "bytesInOutput": 3899
+          "bytesInOutput": 4352
         },
         "src/bookmarks/tree-model.ts": {
-          "bytesInOutput": 3921
+          "bytesInOutput": 6048
         },
         "src/bookmarks/sidebar.ts": {
-          "bytesInOutput": 7686
+          "bytesInOutput": 9663
         },
         "src/core/settings.ts": {
           "bytesInOutput": 3936
@@ -264,21 +264,21 @@
           "bytesInOutput": 289
         },
         "src/search/controller.ts": {
-          "bytesInOutput": 3358
+          "bytesInOutput": 3359
         },
         "src/search/suggestion-engine.ts": {
           "bytesInOutput": 1783
         },
         "src/main.ts": {
-          "bytesInOutput": 4004
+          "bytesInOutput": 3972
         }
       },
-      "bytes": 31495
+      "bytes": 36069
     },
-    "dist/chunks/card-GZTCGQM2.js": {
+    "dist/chunks/card-CPUOBMEM.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-X7EAATPG.js",
+          "path": "dist/chunks/chunk-G73PBDPY.js",
           "kind": "import-statement"
         }
       ],
@@ -296,7 +296,7 @@
       },
       "bytes": 8413
     },
-    "dist/chunks/chunk-X7EAATPG.js": {
+    "dist/chunks/chunk-G73PBDPY.js": {
       "imports": [],
       "exports": [
         "a",
@@ -309,13 +309,13 @@
       ],
       "inputs": {
         "src/core/i18n.ts": {
-          "bytesInOutput": 4850
+          "bytesInOutput": 6392
         },
         "src/search/providers.ts": {
           "bytesInOutput": 2424
         }
       },
-      "bytes": 7332
+      "bytes": 8874
     },
     "dist/assets/folder-XLK4K2E4.svg": {
       "imports": [],
@@ -406,10 +406,10 @@
       ],
       "inputs": {
         "src/styles.css": {
-          "bytesInOutput": 16016
+          "bytesInOutput": 16240
         }
       },
-      "bytes": 16017
+      "bytes": 16241
     }
   }
 }

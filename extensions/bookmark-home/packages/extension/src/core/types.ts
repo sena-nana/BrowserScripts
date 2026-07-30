@@ -42,6 +42,7 @@ export interface BookmarkNode {
   dateLastUsed?: number;
   folderType?: "bookmarks-bar" | "other" | "mobile" | "managed";
   unmodifiable?: "managed";
+  trash?: boolean;
 }
 
 export interface BookmarkCreateInput {
