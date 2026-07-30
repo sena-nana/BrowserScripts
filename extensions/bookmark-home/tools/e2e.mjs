@@ -114,6 +114,19 @@ try {
     }
     return bar.id;
   });
+  const rootIconInset = await page.evaluate((id) => {
+    const sidebar = globalThis.document.querySelector("#bookmark-sidebar");
+    const icon = globalThis.document.querySelector(
+      `.tree-row[data-id="${id}"] .node-icon`,
+    );
+    if (!sidebar || !icon) {
+      throw new Error("Root bookmark folder is missing");
+    }
+    return (
+      icon.getBoundingClientRect().left - sidebar.getBoundingClientRect().left
+    );
+  }, bookmarkBarId);
+  assert.ok(rootIconInset > 0);
 
   await page.locator("#add-bookmark-item").click();
   await page.locator(".modal input[type='text']").nth(0).fill("E2E Bookmark");
@@ -162,7 +175,27 @@ try {
   await page.locator('.popover button[data-action="move"]').click();
   await page.locator(".modal select").selectOption(folderId);
   await page.locator(".modal .button.primary").click();
-  await page.locator(`.tree-row[data-id="${folderId}"] .tree-toggle`).click();
+  assert.equal(await page.locator(".tree-toggle").count(), 0);
+  const folderIcon = page.locator(
+    `.tree-row[data-id="${folderId}"] .node-icon.folder`,
+  );
+  const collapsedFolderIcon = await folderIcon.evaluate(
+    (element) => globalThis.getComputedStyle(element).maskImage,
+  );
+  await folderIcon.click();
+  await page.waitForFunction(
+    (id) =>
+      globalThis.document
+        .querySelector(`.tree-row[data-id="${id}"]`)
+        ?.getAttribute("aria-expanded") === "true",
+    folderId,
+  );
+  assert.notEqual(
+    await folderIcon.evaluate(
+      (element) => globalThis.getComputedStyle(element).maskImage,
+    ),
+    collapsedFolderIcon,
+  );
   await page.getByText("E2E Bookmark Edited", { exact: true }).waitFor();
   const movedParent = await page.evaluate(async (id) => {
     const [node] = await chrome.bookmarks.get(id);
@@ -193,6 +226,18 @@ try {
     return [first.id, second.id];
   }, bookmarkBarId);
   await page.getByText("Codex Bookmark E2E", { exact: true }).waitFor();
+  await page.getByText("Popular Bookmark E2E", { exact: true }).waitFor();
+  const sameLevelIconOffsets = await page.evaluate(
+    ([folder, bookmark]) =>
+      [folder, bookmark].map(
+        (id) =>
+          globalThis.document
+            .querySelector(`.tree-row[data-id="${id}"] .node-icon`)
+            ?.getBoundingClientRect().left,
+      ),
+    [folderId, externalIds[1]],
+  );
+  assert.equal(sameLevelIconOffsets[0], sameLevelIconOffsets[1]);
   assert.equal(await page.locator("#quick-links").count(), 0);
   record("live bookmark synchronization without a shortcut grid");
 
