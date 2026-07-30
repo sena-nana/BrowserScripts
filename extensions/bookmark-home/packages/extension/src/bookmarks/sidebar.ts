@@ -192,23 +192,6 @@ export class BookmarkSidebar {
       element.setAttribute("aria-expanded", String(row.expanded));
     }
 
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = row.node.url
-      ? "tree-toggle is-placeholder"
-      : "tree-toggle";
-    toggle.tabIndex = -1;
-    toggle.setAttribute(
-      "aria-label",
-      row.expanded ? t("collapseBookmarks") : t("expandFolder"),
-    );
-    if (!row.node.url) {
-      toggle.addEventListener("click", (event) => {
-        event.stopPropagation();
-        void this.#toggleFolder(row.node.id);
-      });
-    }
-
     const label = row.node.url
       ? document.createElement("a")
       : document.createElement("button");
@@ -279,7 +262,7 @@ export class BookmarkSidebar {
       void this.#dropOn(row.node);
     });
     element.addEventListener("click", () => this.#select(row.node.id));
-    element.append(toggle, label, menu);
+    element.append(label, menu);
     return element;
   }
 

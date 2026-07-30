@@ -244,11 +244,11 @@ try {
   const page = await context.newPage();
   await page.goto("chrome://newtab/");
   await page.waitForSelector(
-    `.tree-row[data-id="${performanceFolderId}"] .tree-toggle`,
+    `.tree-row[data-id="${performanceFolderId}"] .node-icon.folder`,
   );
   const expandStarted = performance.now();
   await page
-    .locator(`.tree-row[data-id="${performanceFolderId}"] .tree-toggle`)
+    .locator(`.tree-row[data-id="${performanceFolderId}"] .node-icon.folder`)
     .click();
   await page.getByText("Performance Bookmark 0000", { exact: true }).waitFor();
   expandDuration = performance.now() - expandStarted;

@@ -4,6 +4,10 @@
       "bytes": 103,
       "imports": []
     },
+    "src/assets/folder-open.svg": {
+      "bytes": 126,
+      "imports": []
+    },
     "src/assets/search.svg": {
       "bytes": 216,
       "imports": []
@@ -21,12 +25,17 @@
       "imports": []
     },
     "src/styles.css": {
-      "bytes": 19832,
+      "bytes": 19374,
       "imports": [
         {
           "path": "src/assets/folder.svg",
           "kind": "url-token",
           "original": "./assets/folder.svg"
+        },
+        {
+          "path": "src/assets/folder-open.svg",
+          "kind": "url-token",
+          "original": "./assets/folder-open.svg"
         },
         {
           "path": "src/assets/search.svg",
@@ -56,7 +65,7 @@
       "format": "esm"
     },
     "src/core/i18n.ts": {
-      "bytes": 5560,
+      "bytes": 5488,
       "imports": [],
       "format": "esm"
     },
@@ -77,7 +86,7 @@
       "format": "esm"
     },
     "src/bookmarks/sidebar.ts": {
-      "bytes": 15289,
+      "bytes": 14788,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -221,11 +230,11 @@
     "dist/main.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-QRLU2CYR.js",
+          "path": "dist/chunks/chunk-X7EAATPG.js",
           "kind": "import-statement"
         },
         {
-          "path": "dist/chunks/card-34KBV27T.js",
+          "path": "dist/chunks/card-GZTCGQM2.js",
           "kind": "dynamic-import"
         }
       ],
@@ -246,7 +255,7 @@
           "bytesInOutput": 3921
         },
         "src/bookmarks/sidebar.ts": {
-          "bytesInOutput": 7374
+          "bytesInOutput": 7072
         },
         "src/core/settings.ts": {
           "bytesInOutput": 3936
@@ -264,12 +273,12 @@
           "bytesInOutput": 3972
         }
       },
-      "bytes": 31144
+      "bytes": 30842
     },
-    "dist/chunks/card-34KBV27T.js": {
+    "dist/chunks/card-GZTCGQM2.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-QRLU2CYR.js",
+          "path": "dist/chunks/chunk-X7EAATPG.js",
           "kind": "import-statement"
         }
       ],
@@ -287,7 +296,7 @@
       },
       "bytes": 8413
     },
-    "dist/chunks/chunk-QRLU2CYR.js": {
+    "dist/chunks/chunk-X7EAATPG.js": {
       "imports": [],
       "exports": [
         "a",
@@ -300,13 +309,13 @@
       ],
       "inputs": {
         "src/core/i18n.ts": {
-          "bytesInOutput": 4925
+          "bytesInOutput": 4850
         },
         "src/search/providers.ts": {
           "bytesInOutput": 2424
         }
       },
-      "bytes": 7407
+      "bytes": 7332
     },
     "dist/assets/folder-XLK4K2E4.svg": {
       "imports": [],
@@ -317,6 +326,16 @@
         }
       },
       "bytes": 103
+    },
+    "dist/assets/folder-open-TN5XJTBI.svg": {
+      "imports": [],
+      "exports": [],
+      "inputs": {
+        "src/assets/folder-open.svg": {
+          "bytesInOutput": 126
+        }
+      },
+      "bytes": 126
     },
     "dist/assets/search-DJGFLJCC.svg": {
       "imports": [],
@@ -365,6 +384,10 @@
           "kind": "url-token"
         },
         {
+          "path": "dist/assets/folder-open-TN5XJTBI.svg",
+          "kind": "url-token"
+        },
+        {
           "path": "dist/assets/search-DJGFLJCC.svg",
           "kind": "url-token"
         },
@@ -383,10 +406,10 @@
       ],
       "inputs": {
         "src/styles.css": {
-          "bytesInOutput": 16390
+          "bytesInOutput": 16011
         }
       },
-      "bytes": 16391
+      "bytes": 16012
     }
   }
 }

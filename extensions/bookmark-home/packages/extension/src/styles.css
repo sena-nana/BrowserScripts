@@ -26,12 +26,11 @@
   --sidebar-header-height: 50px;
   --sidebar-icon-size: 34px;
   --sidebar-glyph-size: 18px;
-  --tree-toggle-width: 15px;
   --tree-action-width: 25px;
   --tree-action-height: 30px;
   --tree-icon-size: 16px;
   --tree-indent: 25px;
-  --tree-horizontal-padding: 16px;
+  --tree-horizontal-padding: 20px;
   --node-gap: 16px;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
@@ -46,7 +45,7 @@
   --tree-action-height: 26px;
   --tree-icon-size: 14px;
   --tree-indent: 22px;
-  --tree-horizontal-padding: 10px;
+  --tree-horizontal-padding: 14px;
   --node-gap: 10px;
 }
 
@@ -58,7 +57,7 @@
   --tree-action-height: 32px;
   --tree-icon-size: 18px;
   --tree-indent: 30px;
-  --tree-horizontal-padding: 18px;
+  --tree-horizontal-padding: 22px;
   --node-gap: 18px;
 }
 
@@ -329,7 +328,9 @@ body.sidebar-collapsed #bookmark-sidebar {
   height: var(--row-height);
   align-items: center;
   padding: 0 var(--tree-horizontal-padding) 0
-    calc(var(--tree-depth) * var(--tree-indent));
+    calc(
+      var(--tree-horizontal-padding) + var(--tree-depth) * var(--tree-indent)
+    );
   user-select: none;
 }
 
@@ -347,35 +348,6 @@ body.sidebar-collapsed #bookmark-sidebar {
   outline-offset: -4px;
 }
 
-.tree-toggle {
-  width: var(--tree-toggle-width);
-  height: var(--tree-action-height);
-  flex: 0 0 var(--tree-toggle-width);
-  cursor: pointer;
-  background: transparent;
-}
-
-.tree-toggle::before {
-  content: "";
-  display: inline-block;
-  width: 0;
-  height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 4px solid currentColor;
-  opacity: 0.6;
-  transition: transform 120ms ease;
-}
-
-.tree-row[aria-expanded="true"] .tree-toggle::before {
-  transform: rotate(90deg);
-}
-
-.tree-toggle.is-placeholder {
-  pointer-events: none;
-  opacity: 0;
-}
-
 .tree-label {
   display: flex;
   min-width: 0;
@@ -383,6 +355,7 @@ body.sidebar-collapsed #bookmark-sidebar {
   flex: 1;
   align-items: center;
   gap: 0;
+  padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
@@ -421,6 +394,10 @@ body.sidebar-collapsed #bookmark-sidebar {
   border-radius: 1px;
   background: var(--sidebar-text);
   mask: url("./assets/folder.svg") center / contain no-repeat;
+}
+
+.tree-row[aria-expanded="true"] .node-icon.folder {
+  mask-image: url("./assets/folder-open.svg");
 }
 
 .node-icon img {
