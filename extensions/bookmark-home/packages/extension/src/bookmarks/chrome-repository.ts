@@ -10,6 +10,9 @@ import type {
 export function fromChromeNode(
   node: chrome.bookmarks.BookmarkTreeNode,
 ): BookmarkNode {
+  const vivaldiNode = node as chrome.bookmarks.BookmarkTreeNode & {
+    trash?: boolean;
+  };
   return {
     id: node.id,
     title: node.title,
@@ -24,6 +27,7 @@ export function fromChromeNode(
     ...(node.unmodifiable === undefined
       ? {}
       : { unmodifiable: node.unmodifiable }),
+    ...(vivaldiNode.trash === undefined ? {} : { trash: vivaldiNode.trash }),
   };
 }
 

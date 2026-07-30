@@ -140,75 +140,38 @@ try {
   });
   record("transparent preset desktop layout");
 
-  const bookmarkBarId = await page.evaluate(async () => {
+  const bookmarkRoots = await page.evaluate(async () => {
     const [root] = await chrome.bookmarks.getTree();
     const bar = root?.children?.find(
       (node) => node.folderType === "bookmarks-bar",
     );
+    const other = root?.children?.find((node) => node.folderType === "other");
     if (!bar) {
       throw new Error("Bookmarks bar was not found");
     }
-    return bar.id;
+    return { bookmarkBarId: bar.id, otherId: other?.id };
   });
-  const rootIconInset = await page.evaluate((id) => {
-    const sidebar = globalThis.document.querySelector("#bookmark-sidebar");
-    const icon = globalThis.document.querySelector(
-      `.tree-row[data-id="${id}"] .node-icon`,
-    );
-    if (!sidebar || !icon) {
-      throw new Error("Root bookmark folder is missing");
-    }
-    return (
-      icon.getBoundingClientRect().left - sidebar.getBoundingClientRect().left
-    );
-  }, bookmarkBarId);
-  assert.ok(rootIconInset > 0);
-
-  const bookmarkBarRow = page.locator(`.tree-row[data-id="${bookmarkBarId}"]`);
-  const bookmarkBarBounds = await bookmarkBarRow.boundingBox();
-  assert.ok(bookmarkBarBounds);
-  const contextMenuPoint = { x: 120, y: 10 };
-  await bookmarkBarRow.click({
-    button: "right",
-    position: contextMenuPoint,
-  });
-  await page.locator(".tree-popover").waitFor();
+  const { bookmarkBarId, otherId } = bookmarkRoots;
   assert.equal(
-    await page.locator('.tree-popover button[data-action="edit"]').count(),
+    await page.locator(`.tree-row[data-id="${bookmarkBarId}"]`).count(),
     0,
   );
-  await page.waitForFunction(
-    (id) =>
-      globalThis.document
-        .querySelector(`.tree-row[data-id="${id}"]`)
-        ?.getAttribute("aria-selected") === "true",
-    bookmarkBarId,
+  if (otherId) {
+    assert.equal(
+      await page.locator(`.tree-row[data-id="${otherId}"]`).count(),
+      0,
+    );
+  }
+  await page.locator("#sidebar-menu").click();
+  assert.equal(
+    await page
+      .locator(".sidebar-popover")
+      .getByText("Trash", { exact: true })
+      .count(),
+    0,
   );
-  const rootPopoverGeometry = await assertTreePopoverWithinViewport();
-  assert.ok(
-    Math.abs(
-      rootPopoverGeometry.left - (bookmarkBarBounds.x + contextMenuPoint.x),
-    ) <= 1,
-  );
-  assert.ok(
-    Math.abs(
-      rootPopoverGeometry.top - (bookmarkBarBounds.y + contextMenuPoint.y),
-    ) <= 1,
-  );
-  const compactMenuGeometry = await page
-    .locator(".tree-popover")
-    .evaluate((element) => ({
-      width: element.getBoundingClientRect().width,
-      actionHeight:
-        element.querySelector("button")?.getBoundingClientRect().height ??
-        Number.POSITIVE_INFINITY,
-    }));
-  assert.ok(compactMenuGeometry.width <= 170);
-  assert.ok(compactMenuGeometry.actionHeight <= 30);
-  await assertGlassSurface(".tree-popover", defaultGlassSurface);
-  await page.keyboard.press("Escape");
-  await page.locator(".tree-popover").waitFor({ state: "detached" });
-  record("root bookmark folders remain protected in the context menu");
+  await page.locator("#home").click({ position: { x: 20, y: 20 } });
+  record("system roots stay hidden and unsupported trash is omitted");
 
   await page.locator("#add-bookmark-item").click();
   await assertGlassSurface(".modal", defaultGlassSurface);

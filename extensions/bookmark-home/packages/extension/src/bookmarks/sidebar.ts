@@ -3,9 +3,11 @@ import type { BookmarkNode, BookmarkRepository, TreeRow } from "../core/types";
 import {
   chooseDestination,
   confirmDelete,
+  confirmEmptyTrash,
+  confirmPermanentDelete,
   openEntryDialog,
 } from "../ui/dialogs";
-import { BookmarkTreeModel } from "./tree-model";
+import { BookmarkTreeModel, type BookmarkViewScope } from "./tree-model";
 
 const OVERSCAN = 7;
 const POPOVER_GAP = 4;
@@ -23,6 +25,8 @@ interface SidebarElements {
   empty: HTMLElement;
   filter: HTMLInputElement;
   add: HTMLButtonElement;
+  title: HTMLElement;
+  count: HTMLElement;
   popoverRoot: HTMLElement;
 }
 
@@ -35,6 +39,8 @@ export class BookmarkSidebar {
   #selectedId: string | null = null;
   #draggedId: string | null = null;
   #filterTimer = 0;
+  #headerTimer = 0;
+  #headerSequence = 0;
   #searchSequence = 0;
   #renderFrame = 0;
   #markedFirstRows = false;
@@ -65,17 +71,46 @@ export class BookmarkSidebar {
         this.#rows = this.model.rows();
         this.#scheduleRender();
       }
+      this.#scheduleHeaderUpdate();
     });
     this.#bindEvents();
     await this.model.initialize(expandedIds);
     this.#rows = this.model.rows();
     this.#render();
+    await this.#updateHeader();
   }
 
   dispose(): void {
     this.model.dispose();
     window.clearTimeout(this.#filterTimer);
+    window.clearTimeout(this.#headerTimer);
     window.cancelAnimationFrame(this.#renderFrame);
+  }
+
+  get scope(): BookmarkViewScope {
+    return this.model.scope;
+  }
+
+  get hasTrash(): boolean {
+    return this.model.hasTrash;
+  }
+
+  async setScope(scope: BookmarkViewScope): Promise<void> {
+    if (scope === this.model.scope) {
+      return;
+    }
+    this.#closePopover();
+    this.#selectedId = null;
+    this.#draggedId = null;
+    this.#searchSequence += 1;
+    this.#elements.filter.value = "";
+    this.#elements.viewport.scrollTop = 0;
+    if (!(await this.model.setScope(scope))) {
+      return;
+    }
+    this.#rows = this.model.rows();
+    this.#render();
+    await this.#updateHeader();
   }
 
   setRowHeight(rowHeight: number): void {
@@ -117,7 +152,11 @@ export class BookmarkSidebar {
       }, 120);
     });
     this.#elements.add.addEventListener("click", () => {
-      void this.#createAtSelection();
+      if (this.model.scope === "trash") {
+        void this.#emptyTrash();
+      } else {
+        void this.#createAtSelection();
+      }
     });
     this.#elements.viewport.addEventListener("keydown", (event) => {
       void this.#handleKeyboard(event);
@@ -160,6 +199,39 @@ export class BookmarkSidebar {
     });
   }
 
+  #scheduleHeaderUpdate(): void {
+    window.clearTimeout(this.#headerTimer);
+    this.#headerTimer = window.setTimeout(() => {
+      this.#headerTimer = 0;
+      void this.#updateHeader();
+    }, 40);
+  }
+
+  async #updateHeader(): Promise<void> {
+    const sequence = ++this.#headerSequence;
+    const count = await this.model.countBookmarks();
+    if (sequence !== this.#headerSequence) {
+      return;
+    }
+    const trash = this.model.scope === "trash";
+    this.#elements.count.textContent = String(count);
+    this.#elements.title.textContent = t(trash ? "trash" : "bookmarks");
+    this.#elements.add.classList.toggle("is-text-action", trash);
+    this.#elements.add.disabled = trash && !this.model.hasScopeItems;
+    this.#elements.add.setAttribute(
+      "aria-label",
+      t(trash ? "emptyTrash" : "addBookmarkItem"),
+    );
+    if (trash) {
+      this.#elements.add.textContent = t("emptyTrash");
+    } else {
+      const icon = document.createElement("span");
+      icon.className = "icon icon-add";
+      icon.setAttribute("aria-hidden", "true");
+      this.#elements.add.replaceChildren(icon);
+    }
+  }
+
   #render(): void {
     const { viewport, spacer, content, empty } = this.#elements;
     const total = this.#rows.length;
@@ -168,7 +240,9 @@ export class BookmarkSidebar {
       total * this.#rowHeight + this.#verticalPadding * 2,
     )}px`;
     empty.hidden = total > 0;
-    empty.textContent = t("noBookmarks");
+    empty.textContent = t(
+      this.model.scope === "trash" ? "noTrashBookmarks" : "noBookmarks",
+    );
     if (total === 0) {
       content.replaceChildren();
       return;
@@ -261,7 +335,8 @@ export class BookmarkSidebar {
       );
     });
 
-    element.draggable = this.#canModify(row.node);
+    element.draggable =
+      this.model.scope === "bookmarks" && this.#canModify(row.node);
     element.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -285,7 +360,11 @@ export class BookmarkSidebar {
         .forEach((node) => node.classList.remove("is-drop-target"));
     });
     element.addEventListener("dragover", (event) => {
-      if (this.#draggedId && this.#draggedId !== row.node.id) {
+      if (
+        this.model.scope === "bookmarks" &&
+        this.#draggedId &&
+        this.#draggedId !== row.node.id
+      ) {
         event.preventDefault();
         element.classList.add("is-drop-target");
       }
@@ -305,7 +384,9 @@ export class BookmarkSidebar {
 
   async #toggleFolder(id: string): Promise<void> {
     await this.model.toggleFolder(id);
-    this.#onExpandedChange(this.model.expandedIds);
+    if (this.model.scope === "bookmarks") {
+      this.#onExpandedChange(this.model.expandedIds);
+    }
   }
 
   #select(id: string): void {
@@ -314,11 +395,14 @@ export class BookmarkSidebar {
   }
 
   async #createAtSelection(initialType?: "bookmark" | "folder"): Promise<void> {
+    if (this.model.scope !== "bookmarks") {
+      return;
+    }
     const selected = this.#selectedId
       ? this.model.getNode(this.#selectedId)
       : undefined;
     const selectedParent = selected?.url ? selected.parentId : selected?.id;
-    const parentId = selectedParent ?? this.model.rootFolders[0]?.id;
+    const parentId = selectedParent ?? this.model.activeRoot?.id;
     if (!parentId) {
       return;
     }
@@ -368,7 +452,16 @@ export class BookmarkSidebar {
       addAction("open-new-tab", t("openInNewTab"), () =>
         window.open(node.url, "_blank", "noopener"),
       );
-    } else if (!node.unmodifiable) {
+    }
+    if (this.model.scope === "trash") {
+      addAction("restore", t("restoreTo"), () => void this.#restore(node));
+      addAction(
+        "permanently-delete",
+        t("permanentlyDelete"),
+        () => void this.#deletePermanently(node),
+        "danger",
+      );
+    } else if (!node.url && !node.unmodifiable) {
       addAction("add-bookmark", t("addBookmark"), () => {
         this.#selectedId = node.id;
         void this.#createAtSelection("bookmark");
@@ -378,7 +471,7 @@ export class BookmarkSidebar {
         void this.#createAtSelection("folder");
       });
     }
-    if (this.#canModify(node)) {
+    if (this.model.scope === "bookmarks" && this.#canModify(node)) {
       addAction("edit", t("edit"), () => void this.#edit(node));
       addAction("move", t("moveTo"), () => void this.#moveWithDialog(node));
       addAction("delete", t("delete"), () => void this.#delete(node), "danger");
@@ -461,14 +554,50 @@ export class BookmarkSidebar {
     }
   }
 
+  async #deletePermanently(node: BookmarkNode): Promise<void> {
+    if (!(await confirmPermanentDelete(node))) {
+      return;
+    }
+    try {
+      await this.model.remove(node.id);
+      if (this.#selectedId === node.id) {
+        this.#selectedId = null;
+      }
+    } catch {
+      this.#showToast(t("unableToSave"));
+    }
+  }
+
+  async #emptyTrash(): Promise<void> {
+    if (!this.model.hasScopeItems || !(await confirmEmptyTrash())) {
+      return;
+    }
+    try {
+      await this.model.emptyTrash();
+      this.#selectedId = null;
+    } catch {
+      this.#showToast(t("unableToEmptyTrash"));
+    }
+  }
+
+  async #restore(node: BookmarkNode): Promise<void> {
+    const folders = await this.model.destinationFolders(node.id);
+    const parentId = await chooseDestination(folders, undefined, "restore");
+    if (!parentId) {
+      return;
+    }
+    try {
+      await this.model.move(node.id, { parentId });
+      if (this.#selectedId === node.id) {
+        this.#selectedId = null;
+      }
+    } catch {
+      this.#showToast(t("unableToSave"));
+    }
+  }
+
   async #moveWithDialog(node: BookmarkNode): Promise<void> {
-    const folders = this.model
-      .rows()
-      .map((row) => row.node)
-      .filter(
-        (candidate) =>
-          !candidate.url && candidate.id !== node.id && !candidate.unmodifiable,
-      );
+    const folders = await this.model.destinationFolders(node.id);
     const parentId = await chooseDestination(folders, node.parentId);
     if (!parentId) {
       return;
@@ -481,6 +610,9 @@ export class BookmarkSidebar {
   }
 
   async #dropOn(target: BookmarkNode): Promise<void> {
+    if (this.model.scope !== "bookmarks") {
+      return;
+    }
     const draggedId = this.#draggedId;
     this.#draggedId = null;
     if (!draggedId || draggedId === target.id) {
@@ -538,9 +670,16 @@ export class BookmarkSidebar {
       } else {
         await this.#toggleFolder(row.node.id);
       }
-    } else if (event.key === "Delete" && this.#canModify(row.node)) {
+    } else if (
+      event.key === "Delete" &&
+      (this.model.scope === "trash" || this.#canModify(row.node))
+    ) {
       event.preventDefault();
-      await this.#delete(row.node);
+      if (this.model.scope === "trash") {
+        await this.#deletePermanently(row.node);
+      } else {
+        await this.#delete(row.node);
+      }
     }
   }
 
