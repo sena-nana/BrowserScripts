@@ -22,6 +22,14 @@ const repository = new ChromeBookmarkRepository();
 let toastTimer = 0;
 let bookmarkSidebar: BookmarkSidebar | null = null;
 
+function shallowEqual<T extends object>(left: T, right: T): boolean {
+  const keys = Object.keys(left) as (keyof T)[];
+  return (
+    keys.length === Object.keys(right).length &&
+    keys.every((key) => left[key] === right[key])
+  );
+}
+
 function showToast(message: string): void {
   const toast = requiredElement<HTMLElement>("#toast");
   window.clearTimeout(toastTimer);
@@ -58,6 +66,11 @@ function applyAppearance(appearance: SettingsV4["appearance"]): void {
     appearance.sidebarCollapsed,
   );
   bookmarkSidebar?.setRowHeight(sidebarRowHeight());
+}
+
+function revealInitialAppearance(): void {
+  void document.documentElement.offsetWidth;
+  document.documentElement.classList.remove("appearance-pending");
 }
 
 function openSettings(trigger: HTMLElement): void {
@@ -175,9 +188,10 @@ function bindSidebarLayout(): void {
 async function run(): Promise<void> {
   performance.mark("bookmark-home:bootstrap");
   localizeDocument();
-  performance.mark("bookmark-home:shell-ready");
   await settingsStore.load();
   applyAppearance(settingsStore.settings.appearance);
+  revealInitialAppearance();
+  performance.mark("bookmark-home:shell-ready");
   bindSidebarLayout();
 
   bookmarkSidebar = new BookmarkSidebar(
@@ -217,10 +231,24 @@ async function run(): Promise<void> {
   const home = new HomeController(settingsStore.homeBackground);
   home.initialize();
 
+  let appliedSettings = settingsStore.settings;
+  let appliedBackground = settingsStore.homeBackground;
   settingsStore.subscribe((settings) => {
-    applyAppearance(settings.appearance);
-    search.updateSettings(settings.search);
-    home.update(settingsStore.homeBackground);
+    if (!shallowEqual(appliedSettings.appearance, settings.appearance)) {
+      applyAppearance(settings.appearance);
+    }
+    if (!shallowEqual(appliedSettings.search, settings.search)) {
+      search.updateSettings(settings.search);
+    }
+    const background = settingsStore.homeBackground;
+    if (
+      appliedBackground?.dataUrl !== background?.dataUrl ||
+      appliedBackground?.updatedAt !== background?.updatedAt
+    ) {
+      home.update(background);
+    }
+    appliedSettings = settings;
+    appliedBackground = background;
   });
 
   const settingsButton = requiredElement<HTMLButtonElement>("#open-settings");

@@ -105,6 +105,14 @@ body {
   color: var(--text);
 }
 
+html.appearance-pending body {
+  visibility: hidden;
+}
+
+html.appearance-pending #bookmark-sidebar {
+  transition: none;
+}
+
 button,
 input,
 select {
@@ -381,10 +389,6 @@ body.sidebar-collapsed #bookmark-sidebar {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.tree-row[aria-expanded] .tree-label {
-  font-weight: 700;
 }
 
 .node-icon {

@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-07-30T09:31:51.978Z",
-  "completedAt": "2026-07-30T09:31:58.744Z",
+  "startedAt": "2026-07-30T10:43:09.903Z",
+  "completedAt": "2026-07-30T10:43:16.858Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
@@ -8,6 +8,7 @@
     "system roots stay hidden and unsupported trash is omitted",
     "create bookmark through UI",
     "edit bookmark title and URL through the context menu",
+    "selection updates without rebuilding visible bookmark rows",
     "edit folder title through the context menu",
     "move bookmark with keyboard-accessible dialog",
     "confirmed bookmark deletion",
@@ -16,6 +17,8 @@
     "anchored settings card opens from both entry points",
     "context menu flips above bottom rows and closes on scroll",
     "integrated sidebar bookmark filtering",
+    "unrelated setting changes preserve visible bookmark rows",
+    "persisted sidebar width is applied before the first visible frame",
     "settings apply immediately and persist valid values",
     "custom glass settings preview immediately and persist",
     "glass settings follow theme and survive background removal",
@@ -30,5 +33,5 @@
     "screenshots/bookmark-home-settings.png",
     "screenshots/bookmark-home-narrow.png"
   ],
-  "passed": 21
+  "passed": 24
 }

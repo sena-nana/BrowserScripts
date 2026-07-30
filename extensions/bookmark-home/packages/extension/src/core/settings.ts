@@ -245,7 +245,6 @@ export class SettingsStore {
         await chrome.storage.local.remove(HOME_BACKGROUND_KEY);
       }
       this.#homeBackground = nextBackground;
-      this.#emit();
     });
     this.#backgroundWrite = operation.catch(() => undefined);
     await operation;
@@ -266,7 +265,6 @@ export class SettingsStore {
       const next = sanitizeSettings(update(this.settings));
       await chrome.storage.sync.set({ [SETTINGS_KEY]: next });
       this.#settings = next;
-      this.#emit();
     });
     this.#settingsWrite = operation.catch(() => undefined);
     await operation;

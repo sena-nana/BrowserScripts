@@ -390,8 +390,25 @@ export class BookmarkSidebar {
   }
 
   #select(id: string): void {
+    if (id === this.#selectedId) {
+      return;
+    }
+    if (this.#selectedId) {
+      this.#setRenderedSelection(this.#selectedId, false);
+    }
     this.#selectedId = id;
-    this.#scheduleRender();
+    this.#setRenderedSelection(id, true);
+  }
+
+  #setRenderedSelection(id: string, selected: boolean): void {
+    const element = this.#elements.content.querySelector<HTMLElement>(
+      `.tree-row[data-id="${CSS.escape(id)}"]`,
+    );
+    if (!element) {
+      return;
+    }
+    element.classList.toggle("is-selected", selected);
+    element.setAttribute("aria-selected", String(selected));
   }
 
   async #createAtSelection(initialType?: "bookmark" | "folder"): Promise<void> {
