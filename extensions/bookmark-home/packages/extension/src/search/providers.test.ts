@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { SettingsV3, Suggestion } from "../core/types";
+import type { SettingsV4, Suggestion } from "../core/types";
 import {
   buildSearchUrl,
   directNavigationUrl,
@@ -13,7 +13,7 @@ import {
 } from "./providers";
 import { mergeSuggestions } from "./suggestion-engine";
 
-const searchSettings: SettingsV3["search"] = {
+const searchSettings: SettingsV4["search"] = {
   provider: "google",
   customName: "",
   customSearchUrl: "https://example.com/?q={query}",

@@ -4,7 +4,7 @@ import { ChromeBookmarkRepository } from "./bookmarks/chrome-repository";
 import { BookmarkSidebar } from "./bookmarks/sidebar";
 import { localizeDocument, t } from "./core/i18n";
 import { applyTheme, SettingsStore } from "./core/settings";
-import type { SettingsV3 } from "./core/types";
+import type { SettingsV4 } from "./core/types";
 import { HomeController } from "./home/controller";
 import { SearchController } from "./search/controller";
 import { SuggestionEngine } from "./search/suggestion-engine";
@@ -38,12 +38,20 @@ function sidebarRowHeight(): number {
   );
 }
 
-function applyAppearance(appearance: SettingsV3["appearance"]): void {
+function applyAppearance(appearance: SettingsV4["appearance"]): void {
   applyTheme(appearance.theme);
   document.documentElement.dataset.sidebarDensity = appearance.sidebarDensity;
   document.documentElement.style.setProperty(
     "--sidebar-width",
     `${appearance.sidebarWidth}px`,
+  );
+  document.documentElement.style.setProperty(
+    "--custom-panel-alpha",
+    String((100 - appearance.panelTransparency) / 100),
+  );
+  document.documentElement.style.setProperty(
+    "--custom-backdrop-blur",
+    `${appearance.backdropBlur}px`,
   );
   document.body.classList.toggle(
     "sidebar-collapsed",

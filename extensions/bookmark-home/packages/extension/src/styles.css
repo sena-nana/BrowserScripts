@@ -3,6 +3,9 @@
   --sidebar-width: 350px;
   --page-bg: #f2f2f2;
   --panel: rgba(255, 255, 255, 0.8);
+  --custom-panel-rgb: 255 255 255;
+  --custom-panel-alpha: 0.8;
+  --custom-backdrop-blur: 7px;
   --panel-solid: #fff;
   --panel-muted: rgba(0, 0, 0, 0.055);
   --text: #454545;
@@ -63,6 +66,7 @@
   color-scheme: dark;
   --page-bg: #3d3d3d;
   --panel: rgba(0, 0, 0, 0.8);
+  --custom-panel-rgb: 0 0 0;
   --panel-solid: #4d4d4d;
   --panel-muted: rgba(255, 255, 255, 0.08);
   --text: #eee;
@@ -958,6 +962,18 @@ input[aria-invalid="true"] {
   font-size: 12px;
 }
 
+body.has-custom-background
+  :is(
+    #bookmark-sidebar,
+    .sidebar-rail-button,
+    #web-search-input,
+    .open-settings-button,
+    .settings-card
+  ) {
+  background: rgb(var(--custom-panel-rgb) / var(--custom-panel-alpha));
+  backdrop-filter: blur(var(--custom-backdrop-blur));
+}
+
 @media (max-width: 680px) {
   .settings-card {
     right: 12px;
@@ -979,6 +995,7 @@ input[aria-invalid="true"] {
     color-scheme: dark;
     --page-bg: #3d3d3d;
     --panel: rgba(0, 0, 0, 0.8);
+    --custom-panel-rgb: 0 0 0;
     --panel-solid: #4d4d4d;
     --panel-muted: rgba(255, 255, 255, 0.08);
     --text: #eee;

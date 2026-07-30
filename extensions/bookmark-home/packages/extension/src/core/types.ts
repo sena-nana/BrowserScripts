@@ -2,13 +2,15 @@ export type ThemePreference = "system" | "light" | "dark";
 export type SearchProviderId = "google" | "bing" | "baidu" | "custom";
 export type SidebarDensity = "compact" | "standard" | "relaxed";
 
-export interface SettingsV3 {
-  version: 3;
+export interface SettingsV4 {
+  version: 4;
   appearance: {
     theme: ThemePreference;
     sidebarWidth: number;
     sidebarCollapsed: boolean;
     sidebarDensity: SidebarDensity;
+    panelTransparency: number;
+    backdropBlur: number;
   };
   search: {
     provider: SearchProviderId;

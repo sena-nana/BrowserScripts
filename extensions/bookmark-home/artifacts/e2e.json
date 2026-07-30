@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-07-30T06:37:21.710Z",
-  "completedAt": "2026-07-30T06:37:27.934Z",
+  "startedAt": "2026-07-30T06:56:43.760Z",
+  "completedAt": "2026-07-30T06:56:50.176Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
@@ -14,8 +14,8 @@
     "anchored settings card opens from both entry points",
     "integrated sidebar bookmark filtering",
     "settings apply immediately and persist valid values",
-    "local background saves immediately",
-    "dark transparent preset",
+    "custom glass settings preview immediately and persist",
+    "glass settings follow theme and survive background removal",
     "narrow internal bookmark drawer",
     "sidebar preference persistence",
     "no ordinary-page injection",
