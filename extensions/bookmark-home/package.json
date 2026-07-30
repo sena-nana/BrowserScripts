@@ -1,0 +1,32 @@
+{
+  "name": "@browserscripts/bookmark-home-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.17.1",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "typecheck": "tsc -p tsconfig.base.json --noEmit",
+    "lint": "eslint .",
+    "format:check": "prettier . --check",
+    "test": "tsx --test \"packages/**/*.test.ts\"",
+    "e2e": "node tools/e2e.mjs",
+    "perf": "yarn build && tsx tools/perf.ts",
+    "verify": "yarn typecheck && yarn lint && yarn test && yarn build && yarn format:check"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/chrome": "0.2.2",
+    "@types/node": "25.0.9",
+    "esbuild": "0.28.1",
+    "eslint": "10.8.0",
+    "playwright": "1.62.0",
+    "prettier": "3.9.6",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.65.0"
+  }
+}

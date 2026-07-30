@@ -1,0 +1,11 @@
+{
+  "extensionName": {
+    "message": "书签首页"
+  },
+  "extensionShortName": {
+    "message": "书签"
+  },
+  "extensionDescription": {
+    "message": "快速的透明新标签页首页，包含完整书签树和专注搜索。"
+  }
+}

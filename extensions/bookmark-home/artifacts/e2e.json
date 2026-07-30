@@ -1,0 +1,31 @@
+{
+  "startedAt": "2026-07-30T02:48:51.598Z",
+  "completedAt": "2026-07-30T02:48:55.169Z",
+  "checks": [
+    "native new-tab override",
+    "minimal manifest surface",
+    "transparent preset desktop layout",
+    "create bookmark through UI",
+    "edit bookmark through UI",
+    "move bookmark with keyboard-accessible dialog",
+    "confirmed bookmark deletion",
+    "live bookmark synchronization without a shortcut grid",
+    "bookmark, history, and online search suggestions",
+    "home editor cancel restores the persisted preview",
+    "top links save without shortcut controls",
+    "top links persist across new-tab reloads",
+    "local background conversion and persistence",
+    "dark transparent preset",
+    "narrow internal bookmark drawer",
+    "sidebar preference persistence",
+    "no ordinary-page injection",
+    "search navigation"
+  ],
+  "screenshots": [
+    "screenshots/bookmark-home-light.png",
+    "screenshots/bookmark-home-dark.png",
+    "screenshots/bookmark-home-edit.png",
+    "screenshots/bookmark-home-narrow.png"
+  ],
+  "passed": 18
+}

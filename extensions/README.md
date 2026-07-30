@@ -1,6 +1,10 @@
 # Extensions
 
-Future CRX extensions live here. No extension scaffold is created until a real extension defines its manifest, browser targets, build tooling, and internal workspace split.
+Independently managed CRX extensions live here.
+
+## Projects
+
+- [`bookmark-home/`](bookmark-home/README.md): Chrome Manifest V3 transparent new-tab home with a windowed bookmark tree and search.
 
 ## Extension contract
 

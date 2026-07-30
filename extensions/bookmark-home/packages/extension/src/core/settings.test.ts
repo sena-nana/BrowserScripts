@@ -1,0 +1,149 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  DEFAULT_SETTINGS,
+  persistHomeDraftWithRollback,
+  sanitizeHomeBackground,
+  sanitizeHomeLinks,
+  sanitizeSettings,
+} from "./settings";
+
+test("SettingsV1 migration keeps valid preferences and adds home defaults", () => {
+  const settings = sanitizeSettings({
+    version: 1,
+    appearance: {
+      theme: "dark",
+      sidebarWidth: 900,
+      sidebarCollapsed: true,
+    },
+    search: {
+      provider: "bing",
+      customName: 12,
+      customSearchUrl: "https://example.com/?q={query}",
+      historySuggestions: false,
+      onlineSuggestions: true,
+    },
+  });
+
+  assert.deepEqual(settings, {
+    version: 2,
+    appearance: {
+      theme: "dark",
+      sidebarWidth: 480,
+      sidebarCollapsed: true,
+    },
+    search: {
+      provider: "bing",
+      customName: "",
+      customSearchUrl: "https://example.com/?q={query}",
+      historySuggestions: false,
+      onlineSuggestions: true,
+    },
+    home: DEFAULT_SETTINGS.home,
+  });
+});
+
+test("invalid persisted values fall back to safe defaults", () => {
+  const settings = sanitizeSettings({
+    appearance: {
+      theme: "neon",
+      sidebarWidth: Number.NaN,
+      sidebarCollapsed: "yes",
+    },
+    search: {
+      provider: "unknown",
+      customSearchUrl: null,
+      historySuggestions: "yes",
+    },
+  });
+
+  assert.deepEqual(settings, DEFAULT_SETTINGS);
+  assert.notEqual(settings, DEFAULT_SETTINGS);
+});
+
+test("home settings sanitize top links and discard removed grid data", () => {
+  const settings = sanitizeSettings({
+    home: {
+      topLinks: [
+        { id: "one", title: "One", url: "https://example.com" },
+        { id: "duplicate", title: "Duplicate", url: "https://example.com/" },
+        { id: "unsafe", title: "Unsafe", url: "javascript:alert(1)" },
+      ],
+      grid: {
+        mode: "custom",
+        columns: 99,
+        rows: -5,
+        customLinks: [
+          { id: "two", title: "Two", url: "http://example.org/path" },
+        ],
+      },
+    },
+  });
+
+  assert.equal(settings.home.topLinks.length, 1);
+  assert.equal("grid" in settings.home, false);
+});
+
+test("background and standalone links reject unsafe persisted data", () => {
+  assert.deepEqual(
+    sanitizeHomeLinks(
+      [
+        { title: "Safe", url: "https://example.com" },
+        { title: "File", url: "file:///tmp/a" },
+      ],
+      6,
+    ).map(({ title, url }) => ({ title, url })),
+    [{ title: "Safe", url: "https://example.com/" }],
+  );
+  assert.equal(
+    sanitizeHomeBackground({
+      version: 1,
+      dataUrl: "data:image/png;base64,AAAA",
+      updatedAt: 1,
+    }),
+    null,
+  );
+});
+
+test("failed home draft persistence restores settings and background", async () => {
+  const previous = structuredClone(DEFAULT_SETTINGS);
+  const next = structuredClone(DEFAULT_SETTINGS);
+  next.home.topLinks = [
+    { id: "saved", title: "Saved", url: "https://saved.example/" },
+  ];
+  const calls: string[] = [];
+  let failBackground = true;
+
+  await assert.rejects(
+    persistHomeDraftWithRollback(
+      {
+        saveSettings: (settings) => {
+          calls.push(
+            `settings:${settings.home.topLinks[0]?.title ?? "default"}`,
+          );
+          return Promise.resolve();
+        },
+        saveBackground: (background) => {
+          calls.push(`background:${background ? "set" : "empty"}`);
+          if (failBackground) {
+            failBackground = false;
+            return Promise.reject(new Error("quota"));
+          }
+          return Promise.resolve();
+        },
+      },
+      next,
+      { version: 1, dataUrl: "data:image/webp;base64,AAAA", updatedAt: 2 },
+      previous,
+      null,
+    ),
+  );
+
+  assert.deepEqual(calls, [
+    "settings:Saved",
+    "background:set",
+    "settings:default",
+    "background:empty",
+  ]);
+});

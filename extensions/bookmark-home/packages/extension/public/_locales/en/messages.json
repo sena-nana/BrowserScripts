@@ -1,0 +1,11 @@
+{
+  "extensionName": {
+    "message": "Bookmark Home"
+  },
+  "extensionShortName": {
+    "message": "Bookmarks"
+  },
+  "extensionDescription": {
+    "message": "A fast transparent new tab home with a complete bookmark tree and focused search."
+  }
+}
