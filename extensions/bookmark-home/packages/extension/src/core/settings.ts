@@ -1,6 +1,5 @@
 import type {
   HomeBackgroundV1,
-  HomeLink,
   LocalUiStateV1,
   SearchProviderId,
   SettingsV2,
@@ -25,9 +24,6 @@ export const DEFAULT_SETTINGS: SettingsV2 = {
     customSearchUrl: "https://example.com/search?q={query}",
     historySuggestions: true,
     onlineSuggestions: true,
-  },
-  home: {
-    topLinks: [],
   },
 };
 
@@ -61,59 +57,12 @@ function boundedWidth(value: unknown): number {
     : DEFAULT_SETTINGS.appearance.sidebarWidth;
 }
 
-export function sanitizeHomeUrl(value: unknown): string | null {
-  if (typeof value !== "string" || value.length > 2_048) {
-    return null;
-  }
-  try {
-    const parsed = new URL(value.trim());
-    return parsed.protocol === "http:" || parsed.protocol === "https:"
-      ? parsed.href
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-export function sanitizeHomeLinks(value: unknown, maximum: number): HomeLink[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  const urls = new Set<string>();
-  const links: HomeLink[] = [];
-  for (const item of value) {
-    if (!isRecord(item)) {
-      continue;
-    }
-    const url = sanitizeHomeUrl(item.url);
-    const title =
-      typeof item.title === "string" ? item.title.trim().slice(0, 80) : "";
-    if (!url || !title || urls.has(url)) {
-      continue;
-    }
-    urls.add(url);
-    links.push({
-      id:
-        typeof item.id === "string" && item.id.length <= 100
-          ? item.id
-          : `link-${links.length}-${url}`,
-      title,
-      url,
-    });
-    if (links.length >= maximum) {
-      break;
-    }
-  }
-  return links;
-}
-
 export function sanitizeSettings(value: unknown): SettingsV2 {
   if (!isRecord(value)) {
     return structuredClone(DEFAULT_SETTINGS);
   }
   const appearance = isRecord(value.appearance) ? value.appearance : {};
   const search = isRecord(value.search) ? value.search : {};
-  const home = isRecord(value.home) ? value.home : {};
   return {
     version: 2,
     appearance: {
@@ -146,9 +95,6 @@ export function sanitizeSettings(value: unknown): SettingsV2 {
         typeof search.onlineSuggestions === "boolean"
           ? search.onlineSuggestions
           : DEFAULT_SETTINGS.search.onlineSuggestions,
-    },
-    home: {
-      topLinks: sanitizeHomeLinks(home.topLinks, 6),
     },
   };
 }

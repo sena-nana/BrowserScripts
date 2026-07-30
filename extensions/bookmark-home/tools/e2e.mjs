@@ -86,7 +86,9 @@ try {
       searchWidth: searchRect.width,
       searchHeight: searchRect.height,
       headingCount: globalThis.document.querySelectorAll("h1").length,
-      topLink: globalThis.document.querySelector("#top-links a")?.textContent,
+      topJumpCount: globalThis.document.querySelectorAll(
+        "#top-links, .top-link",
+      ).length,
     };
   });
   assert.deepEqual(layout, {
@@ -95,7 +97,7 @@ try {
     searchWidth: 650,
     searchHeight: 54,
     headingCount: 0,
-    topLink: "Google",
+    topJumpCount: 0,
   });
   await page.screenshot({
     path: path.join(screenshotsPath, "bookmark-home-light.png"),
@@ -232,43 +234,40 @@ try {
   };
 
   await openEditor();
-  const topInputs = page.locator(
-    ".home-edit-group:nth-of-type(2) .link-editor-row input",
-  );
-  await topInputs.nth(0).fill("Temporary Link");
-  await topInputs.nth(1).fill("https://temporary.example/");
+  await page.locator("#home-editor select").selectOption("bing");
+  await page
+    .locator("#web-search-input")
+    .getAttribute("placeholder")
+    .then((placeholder) =>
+      assert.equal(placeholder, "Search Bing or enter an address"),
+    );
   await page
     .locator(".home-edit-bar")
     .getByText("Cancel", { exact: true })
     .click();
   await page.locator("#home-editor").waitFor({ state: "detached" });
   assert.equal(
-    await page.getByText("Temporary Link", { exact: true }).count(),
-    0,
-  );
-  assert.equal(
-    await page
-      .locator("#top-links")
-      .getByText("Google", { exact: true })
-      .count(),
-    1,
+    await page.locator("#web-search-input").getAttribute("placeholder"),
+    "Search Google or enter an address",
   );
   record("home editor cancel restores the persisted preview");
 
   await openEditor();
-  const savedTopInputs = page.locator(
-    ".home-edit-group:nth-of-type(2) .link-editor-row input",
-  );
-  await savedTopInputs.nth(0).fill("Saved Link");
-  await savedTopInputs.nth(1).fill("https://saved.example/");
+  await page.locator("#home-editor select").selectOption("bing");
   await saveEditor();
-  await page.locator("#top-links").getByText("Saved Link").waitFor();
-  record("top links save without shortcut controls");
+  assert.equal(
+    await page.locator("#web-search-input").getAttribute("placeholder"),
+    "Search Bing or enter an address",
+  );
+  record("home editor saves search settings without jump controls");
 
   await page.reload();
-  await page.locator("#top-links").getByText("Saved Link").waitFor();
-  assert.equal(await page.locator("#quick-links").count(), 0);
-  record("top links persist across new-tab reloads");
+  assert.equal(
+    await page.locator("#web-search-input").getAttribute("placeholder"),
+    "Search Bing or enter an address",
+  );
+  assert.equal(await page.locator("#top-links, .top-link").count(), 0);
+  record("search settings persist without top-right jumps");
 
   await openEditor();
   const png = await readFile(
@@ -372,6 +371,21 @@ try {
     [...externalIds, folderId],
   );
 
+  await page.evaluate(async () => {
+    const stored = await chrome.storage.sync.get("settings");
+    await chrome.storage.sync.set({
+      settings: {
+        ...stored.settings,
+        search: { ...stored.settings.search, provider: "google" },
+      },
+    });
+  });
+  await page
+    .locator("#web-search-input")
+    .getAttribute("placeholder")
+    .then((placeholder) =>
+      assert.equal(placeholder, "Search Google or enter an address"),
+    );
   await page.locator("#web-search-input").fill("e2e search phrase");
   await page.locator("#web-search-input").press("Enter");
   await page.waitForURL("https://www.google.com/search**");

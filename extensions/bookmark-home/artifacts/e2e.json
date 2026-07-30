@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-07-30T02:48:51.598Z",
-  "completedAt": "2026-07-30T02:48:55.169Z",
+  "startedAt": "2026-07-30T02:54:46.831Z",
+  "completedAt": "2026-07-30T02:54:50.109Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
@@ -12,8 +12,8 @@
     "live bookmark synchronization without a shortcut grid",
     "bookmark, history, and online search suggestions",
     "home editor cancel restores the persisted preview",
-    "top links save without shortcut controls",
-    "top links persist across new-tab reloads",
+    "home editor saves search settings without jump controls",
+    "search settings persist without top-right jumps",
     "local background conversion and persistence",
     "dark transparent preset",
     "narrow internal bookmark drawer",

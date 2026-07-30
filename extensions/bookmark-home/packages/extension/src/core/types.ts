@@ -1,12 +1,6 @@
 export type ThemePreference = "system" | "light" | "dark";
 export type SearchProviderId = "google" | "bing" | "baidu" | "custom";
 
-export interface HomeLink {
-  id: string;
-  title: string;
-  url: string;
-}
-
 export interface SettingsV2 {
   version: 2;
   appearance: {
@@ -20,9 +14,6 @@ export interface SettingsV2 {
     customSearchUrl: string;
     historySuggestions: boolean;
     onlineSuggestions: boolean;
-  };
-  home: {
-    topLinks: HomeLink[];
   };
 }
 

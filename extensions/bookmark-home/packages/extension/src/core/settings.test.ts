@@ -5,11 +5,10 @@ import {
   DEFAULT_SETTINGS,
   persistHomeDraftWithRollback,
   sanitizeHomeBackground,
-  sanitizeHomeLinks,
   sanitizeSettings,
 } from "./settings";
 
-test("SettingsV1 migration keeps valid preferences and adds home defaults", () => {
+test("SettingsV1 migration keeps valid preferences", () => {
   const settings = sanitizeSettings({
     version: 1,
     appearance: {
@@ -40,7 +39,6 @@ test("SettingsV1 migration keeps valid preferences and adds home defaults", () =
       historySuggestions: false,
       onlineSuggestions: true,
     },
-    home: DEFAULT_SETTINGS.home,
   });
 });
 
@@ -62,7 +60,7 @@ test("invalid persisted values fall back to safe defaults", () => {
   assert.notEqual(settings, DEFAULT_SETTINGS);
 });
 
-test("home settings sanitize top links and discard removed grid data", () => {
+test("removed home link settings are discarded", () => {
   const settings = sanitizeSettings({
     home: {
       topLinks: [
@@ -81,21 +79,10 @@ test("home settings sanitize top links and discard removed grid data", () => {
     },
   });
 
-  assert.equal(settings.home.topLinks.length, 1);
-  assert.equal("grid" in settings.home, false);
+  assert.equal("home" in settings, false);
 });
 
-test("background and standalone links reject unsafe persisted data", () => {
-  assert.deepEqual(
-    sanitizeHomeLinks(
-      [
-        { title: "Safe", url: "https://example.com" },
-        { title: "File", url: "file:///tmp/a" },
-      ],
-      6,
-    ).map(({ title, url }) => ({ title, url })),
-    [{ title: "Safe", url: "https://example.com/" }],
-  );
+test("background rejects unsupported persisted data", () => {
   assert.equal(
     sanitizeHomeBackground({
       version: 1,
@@ -109,9 +96,7 @@ test("background and standalone links reject unsafe persisted data", () => {
 test("failed home draft persistence restores settings and background", async () => {
   const previous = structuredClone(DEFAULT_SETTINGS);
   const next = structuredClone(DEFAULT_SETTINGS);
-  next.home.topLinks = [
-    { id: "saved", title: "Saved", url: "https://saved.example/" },
-  ];
+  next.search.provider = "bing";
   const calls: string[] = [];
   let failBackground = true;
 
@@ -119,9 +104,7 @@ test("failed home draft persistence restores settings and background", async () 
     persistHomeDraftWithRollback(
       {
         saveSettings: (settings) => {
-          calls.push(
-            `settings:${settings.home.topLinks[0]?.title ?? "default"}`,
-          );
+          calls.push(`settings:${settings.search.provider}`);
           return Promise.resolve();
         },
         saveBackground: (background) => {
@@ -141,9 +124,9 @@ test("failed home draft persistence restores settings and background", async () 
   );
 
   assert.deepEqual(calls, [
-    "settings:Saved",
+    "settings:bing",
     "background:set",
-    "settings:default",
+    "settings:google",
     "background:empty",
   ]);
 });

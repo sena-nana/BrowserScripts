@@ -2,7 +2,7 @@
 
 Bookmark Home is a framework-free Chrome Manifest V3 new-tab extension. Its
 transparent home page combines a complete bookmark tree, search suggestions,
-editable top links, and an optional local background.
+and an optional local background.
 
 ## Develop
 

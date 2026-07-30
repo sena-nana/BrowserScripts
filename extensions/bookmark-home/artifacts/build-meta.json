@@ -17,7 +17,7 @@
       "imports": []
     },
     "src/styles.css": {
-      "bytes": 15324,
+      "bytes": 14453,
       "imports": [
         {
           "path": "src/assets/search.svg",
@@ -47,7 +47,7 @@
       "format": "esm"
     },
     "src/core/i18n.ts": {
-      "bytes": 5238,
+      "bytes": 5181,
       "imports": [],
       "format": "esm"
     },
@@ -89,24 +89,18 @@
       "format": "esm"
     },
     "src/core/settings.ts": {
-      "bytes": 10258,
-      "imports": [],
-      "format": "esm"
-    },
-    "src/search/providers.ts": {
-      "bytes": 6065,
+      "bytes": 8993,
       "imports": [],
       "format": "esm"
     },
     "src/home/controller.ts": {
-      "bytes": 1806,
-      "imports": [
-        {
-          "path": "src/search/providers.ts",
-          "kind": "import-statement",
-          "original": "../search/providers"
-        }
-      ],
+      "bytes": 821,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/search/providers.ts": {
+      "bytes": 5418,
+      "imports": [],
       "format": "esm"
     },
     "src/search/controller.ts": {
@@ -153,17 +147,12 @@
       "format": "esm"
     },
     "src/home/editor.ts": {
-      "bytes": 9420,
+      "bytes": 7089,
       "imports": [
         {
           "path": "src/core/i18n.ts",
           "kind": "import-statement",
           "original": "../core/i18n"
-        },
-        {
-          "path": "src/core/settings.ts",
-          "kind": "import-statement",
-          "original": "../core/settings"
         },
         {
           "path": "src/search/providers.ts",
@@ -179,7 +168,7 @@
       "format": "esm"
     },
     "src/main.ts": {
-      "bytes": 7449,
+      "bytes": 7347,
       "imports": [
         {
           "path": "src/styles.css",
@@ -239,19 +228,19 @@
     "dist/main.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-HQ7FJHV7.js",
+          "path": "dist/chunks/chunk-2Z5R5A4F.js",
           "kind": "import-statement"
         },
         {
-          "path": "dist/chunks/chunk-HV7PQUWS.js",
+          "path": "dist/chunks/chunk-XHUYK2JI.js",
           "kind": "import-statement"
         },
         {
-          "path": "dist/chunks/drawer-3IW4CAEU.js",
+          "path": "dist/chunks/drawer-IBB6HEPJ.js",
           "kind": "dynamic-import"
         },
         {
-          "path": "dist/chunks/editor-4P4QP26A.js",
+          "path": "dist/chunks/editor-SF624HJJ.js",
           "kind": "dynamic-import"
         }
       ],
@@ -266,16 +255,19 @@
           "bytesInOutput": 2539
         },
         "src/ui/dialogs.ts": {
-          "bytesInOutput": 3897
+          "bytesInOutput": 3899
         },
         "src/bookmarks/tree-model.ts": {
           "bytesInOutput": 3921
         },
         "src/bookmarks/sidebar.ts": {
-          "bytesInOutput": 7035
+          "bytesInOutput": 7040
+        },
+        "src/core/settings.ts": {
+          "bytesInOutput": 3747
         },
         "src/home/controller.ts": {
-          "bytesInOutput": 689
+          "bytesInOutput": 315
         },
         "src/search/controller.ts": {
           "bytesInOutput": 3358
@@ -284,15 +276,15 @@
           "bytesInOutput": 1782
         },
         "src/main.ts": {
-          "bytesInOutput": 3578
+          "bytesInOutput": 3552
         }
       },
-      "bytes": 26931
+      "bytes": 30264
     },
-    "dist/chunks/drawer-3IW4CAEU.js": {
+    "dist/chunks/drawer-IBB6HEPJ.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-HV7PQUWS.js",
+          "path": "dist/chunks/chunk-XHUYK2JI.js",
           "kind": "import-statement"
         }
       ],
@@ -307,14 +299,14 @@
       },
       "bytes": 2243
     },
-    "dist/chunks/editor-4P4QP26A.js": {
+    "dist/chunks/editor-SF624HJJ.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-HQ7FJHV7.js",
+          "path": "dist/chunks/chunk-2Z5R5A4F.js",
           "kind": "import-statement"
         },
         {
-          "path": "dist/chunks/chunk-HV7PQUWS.js",
+          "path": "dist/chunks/chunk-XHUYK2JI.js",
           "kind": "import-statement"
         }
       ],
@@ -327,36 +319,28 @@
           "bytesInOutput": 1063
         },
         "src/home/editor.ts": {
-          "bytesInOutput": 4741
+          "bytesInOutput": 3603
         }
       },
-      "bytes": 5934
+      "bytes": 4782
     },
-    "dist/chunks/chunk-HQ7FJHV7.js": {
+    "dist/chunks/chunk-2Z5R5A4F.js": {
       "imports": [],
       "exports": [
         "a",
         "b",
         "c",
         "d",
-        "e",
-        "f",
-        "g",
-        "h",
-        "i",
-        "j"
+        "e"
       ],
       "inputs": {
-        "src/core/settings.ts": {
-          "bytesInOutput": 4307
-        },
         "src/search/providers.ts": {
-          "bytesInOutput": 2745
+          "bytesInOutput": 2424
         }
       },
-      "bytes": 7131
+      "bytes": 2468
     },
-    "dist/chunks/chunk-HV7PQUWS.js": {
+    "dist/chunks/chunk-XHUYK2JI.js": {
       "imports": [],
       "exports": [
         "a",
@@ -364,10 +348,10 @@
       ],
       "inputs": {
         "src/core/i18n.ts": {
-          "bytesInOutput": 4621
+          "bytesInOutput": 4564
         }
       },
-      "bytes": 4644
+      "bytes": 4587
     },
     "dist/assets/search-WNEL3I2P.svg": {
       "imports": [],
@@ -430,10 +414,10 @@
       ],
       "inputs": {
         "src/styles.css": {
-          "bytesInOutput": 12416
+          "bytesInOutput": 11720
         }
       },
-      "bytes": 12417
+      "bytes": 11721
     }
   }
 }

@@ -1,9 +1,4 @@
-import type {
-  HomeLink,
-  SearchProviderId,
-  SettingsV2,
-  Suggestion,
-} from "../core/types";
+import type { SearchProviderId, SettingsV2, Suggestion } from "../core/types";
 
 export interface SearchProvider {
   id: SearchProviderId;
@@ -41,26 +36,6 @@ export function providerName(settings: SettingsV2["search"]): string {
   return settings.provider === "custom"
     ? settings.customName.trim() || "Custom"
     : SEARCH_PROVIDERS[settings.provider].name;
-}
-
-export function providerHomepage(settings: SettingsV2["search"]): HomeLink {
-  if (settings.provider === "custom") {
-    const template = isValidCustomSearchUrl(settings.customSearchUrl)
-      ? settings.customSearchUrl
-      : SEARCH_PROVIDERS.google.searchUrl;
-    const url = new URL(template.replace("{query}", "")).origin;
-    return {
-      id: "search-provider-home",
-      title: settings.customName.trim() || "Custom",
-      url,
-    };
-  }
-  const provider = SEARCH_PROVIDERS[settings.provider];
-  return {
-    id: "search-provider-home",
-    title: provider.name,
-    url: new URL(provider.searchUrl).origin,
-  };
 }
 
 export function isValidCustomSearchUrl(value: string): boolean {
