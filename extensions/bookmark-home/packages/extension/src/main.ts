@@ -112,8 +112,6 @@ function bindSidebarLayout(): void {
     popover.className = "popover sidebar-popover";
     popover.setAttribute("role", "menu");
     const rect = menu.getBoundingClientRect();
-    popover.style.left = `${Math.max(8, rect.right - 190)}px`;
-    popover.style.top = `${rect.bottom + 4}px`;
     const addAction = (label: string, action: () => void): void => {
       const button = document.createElement("button");
       button.type = "button";
@@ -129,6 +127,9 @@ function bindSidebarLayout(): void {
       void settingsStore.updateAppearance({ sidebarCollapsed: true });
     });
     popoverRoot.replaceChildren(popover);
+    const popoverRect = popover.getBoundingClientRect();
+    popover.style.left = `${Math.max(8, rect.right - popoverRect.width)}px`;
+    popover.style.top = `${rect.bottom + 4}px`;
     popover.querySelector("button")?.focus();
   });
 

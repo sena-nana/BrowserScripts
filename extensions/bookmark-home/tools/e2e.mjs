@@ -58,6 +58,42 @@ try {
   assert.match(page.url(), /^chrome-extension:\/\//);
   record("native new-tab override");
 
+  const assertTreePopoverWithinViewport = async () => {
+    const geometry = await page.locator(".tree-popover").evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return {
+        left: bounds.left,
+        top: bounds.top,
+        right: bounds.right,
+        bottom: bounds.bottom,
+        viewportWidth: globalThis.innerWidth,
+        viewportHeight: globalThis.innerHeight,
+      };
+    });
+    assert.ok(geometry.left >= 8);
+    assert.ok(geometry.top >= 8);
+    assert.ok(geometry.right <= geometry.viewportWidth - 8);
+    assert.ok(geometry.bottom <= geometry.viewportHeight - 8);
+    return geometry;
+  };
+
+  const assertGlassSurface = async (selector, expected) => {
+    const actual = await page.locator(selector).evaluate((element) => {
+      const style = globalThis.getComputedStyle(element);
+      return {
+        background: style.backgroundColor,
+        blur: style.backdropFilter,
+        borderRadius: style.borderRadius,
+      };
+    });
+    assert.deepEqual(actual, expected);
+  };
+  const defaultGlassSurface = {
+    background: "rgba(255, 255, 255, 0.8)",
+    blur: "blur(7px)",
+    borderRadius: "6px",
+  };
+
   const manifest = await page.evaluate(() => chrome.runtime.getManifest());
   assert.equal(manifest.manifest_version, 3);
   assert.deepEqual(manifest.permissions, [
@@ -128,7 +164,54 @@ try {
   }, bookmarkBarId);
   assert.ok(rootIconInset > 0);
 
+  const bookmarkBarRow = page.locator(`.tree-row[data-id="${bookmarkBarId}"]`);
+  const bookmarkBarBounds = await bookmarkBarRow.boundingBox();
+  assert.ok(bookmarkBarBounds);
+  const contextMenuPoint = { x: 120, y: 10 };
+  await bookmarkBarRow.click({
+    button: "right",
+    position: contextMenuPoint,
+  });
+  await page.locator(".tree-popover").waitFor();
+  assert.equal(
+    await page.locator('.tree-popover button[data-action="edit"]').count(),
+    0,
+  );
+  await page.waitForFunction(
+    (id) =>
+      globalThis.document
+        .querySelector(`.tree-row[data-id="${id}"]`)
+        ?.getAttribute("aria-selected") === "true",
+    bookmarkBarId,
+  );
+  const rootPopoverGeometry = await assertTreePopoverWithinViewport();
+  assert.ok(
+    Math.abs(
+      rootPopoverGeometry.left - (bookmarkBarBounds.x + contextMenuPoint.x),
+    ) <= 1,
+  );
+  assert.ok(
+    Math.abs(
+      rootPopoverGeometry.top - (bookmarkBarBounds.y + contextMenuPoint.y),
+    ) <= 1,
+  );
+  const compactMenuGeometry = await page
+    .locator(".tree-popover")
+    .evaluate((element) => ({
+      width: element.getBoundingClientRect().width,
+      actionHeight:
+        element.querySelector("button")?.getBoundingClientRect().height ??
+        Number.POSITIVE_INFINITY,
+    }));
+  assert.ok(compactMenuGeometry.width <= 170);
+  assert.ok(compactMenuGeometry.actionHeight <= 30);
+  await assertGlassSurface(".tree-popover", defaultGlassSurface);
+  await page.keyboard.press("Escape");
+  await page.locator(".tree-popover").waitFor({ state: "detached" });
+  record("root bookmark folders remain protected in the context menu");
+
   await page.locator("#add-bookmark-item").click();
+  await assertGlassSurface(".modal", defaultGlassSurface);
   await page.locator(".modal input[type='text']").nth(0).fill("E2E Bookmark");
   await page
     .locator(".modal input[type='text']")
@@ -147,15 +230,32 @@ try {
   });
   record("create bookmark through UI");
 
-  await page.locator(`.tree-row[data-id="${bookmarkId}"] .tree-menu`).click();
-  await page.locator('.popover button[data-action="edit"]').click();
+  await page
+    .locator(`.tree-row[data-id="${bookmarkId}"]`)
+    .click({ button: "right" });
+  await page.locator(".tree-popover").waitFor();
+  await assertTreePopoverWithinViewport();
+  await page.locator('.tree-popover button[data-action="edit"]').click();
+  await assertGlassSurface(".modal", defaultGlassSurface);
   await page
     .locator(".modal input[type='text']")
     .nth(0)
     .fill("E2E Bookmark Edited");
+  await page
+    .locator(".modal input[type='text']")
+    .nth(1)
+    .fill("https://example.com/e2e-bookmark-edited");
   await page.locator(".modal .button.primary").click();
   await page.getByText("E2E Bookmark Edited", { exact: true }).waitFor();
-  record("edit bookmark through UI");
+  const editedBookmark = await page.evaluate(async (id) => {
+    const [node] = await chrome.bookmarks.get(id);
+    return { title: node?.title, url: node?.url };
+  }, bookmarkId);
+  assert.deepEqual(editedBookmark, {
+    title: "E2E Bookmark Edited",
+    url: "https://example.com/e2e-bookmark-edited",
+  });
+  record("edit bookmark title and URL through the context menu");
 
   await page.locator("#add-bookmark-item").click();
   await page.locator(".modal select").selectOption("folder");
@@ -170,6 +270,30 @@ try {
     }
     return folder.id;
   });
+
+  await page
+    .locator(`.tree-row[data-id="${folderId}"]`)
+    .click({ button: "right" });
+  await page.locator('.tree-popover button[data-action="edit"]').click();
+  assert.equal(
+    await page.locator(".modal input[type='text']").nth(1).isHidden(),
+    true,
+  );
+  await page
+    .locator(".modal input[type='text']")
+    .nth(0)
+    .fill("E2E Folder Edited");
+  await page.locator(".modal .button.primary").click();
+  await page.getByText("E2E Folder Edited", { exact: true }).waitFor();
+  const editedFolder = await page.evaluate(async (id) => {
+    const [node] = await chrome.bookmarks.get(id);
+    return { title: node?.title, hasUrl: Boolean(node?.url) };
+  }, folderId);
+  assert.deepEqual(editedFolder, {
+    title: "E2E Folder Edited",
+    hasUrl: false,
+  });
+  record("edit folder title through the context menu");
 
   await page.locator(`.tree-row[data-id="${bookmarkId}"] .tree-menu`).click();
   await page.locator('.popover button[data-action="move"]').click();
@@ -379,9 +503,48 @@ try {
       ) >= 42,
   );
 
+  const bottomBookmarkId = densityIds[densityIds.length - 1];
+  const bottomBookmarkRow = page.locator(
+    `.tree-row[data-id="${bottomBookmarkId}"]`,
+  );
+  await page.locator("#bookmark-tree").evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await bottomBookmarkRow.waitFor();
+  const bottomBookmarkBounds = await bottomBookmarkRow.boundingBox();
+  assert.ok(bottomBookmarkBounds);
+  await page.mouse.click(
+    bottomBookmarkBounds.x + Math.min(120, bottomBookmarkBounds.width - 2),
+    bottomBookmarkBounds.y + bottomBookmarkBounds.height - 2,
+    { button: "right" },
+  );
+  const bottomPopover = await assertTreePopoverWithinViewport();
+  const bottomRowBounds = await bottomBookmarkRow.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return {
+      top: bounds.top,
+      bottom: bounds.bottom,
+    };
+  });
+  assert.ok(
+    bottomPopover.top < bottomRowBounds.top,
+    `Expected the menu above the bottom row: ${JSON.stringify({
+      popover: bottomPopover,
+      row: bottomRowBounds,
+    })}`,
+  );
+  await page.locator("#bookmark-tree").evaluate((element) => {
+    element.scrollTop -= 30;
+  });
+  await page.locator(".tree-popover").waitFor({ state: "detached" });
+  record("context menu flips above bottom rows and closes on scroll");
+
   await page.locator("#toggle-bookmark-filter").click();
   await page.locator(".sidebar-header.is-filtering").waitFor();
   await page.locator("#bookmark-filter").fill("Density Bookmark 39");
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll(".tree-row").length === 1,
+  );
   await page.getByText("Density Bookmark 39", { exact: true }).waitFor();
   assert.equal(await page.locator(".tree-row").count(), 1);
   await page.locator("#close-bookmark-filter").click();
@@ -595,6 +758,21 @@ try {
   await page.locator(".settings-card").press("Escape");
   await page.reload();
   await page.locator("body.has-custom-background").waitFor();
+  await page.locator("#sidebar-menu").click();
+  await page.locator(".sidebar-popover").waitFor();
+  await assertGlassSurface(".sidebar-popover", {
+    background: "rgba(255, 255, 255, 0.45)",
+    blur: "blur(18px)",
+    borderRadius: "6px",
+  });
+  await page.keyboard.press("Escape");
+  await page.locator("#add-bookmark-item").click();
+  await assertGlassSurface(".modal", {
+    background: "rgba(255, 255, 255, 0.45)",
+    blur: "blur(18px)",
+    borderRadius: "6px",
+  });
+  await page.locator(".modal .button:not(.primary)").click();
   await openSettings();
   assert.equal(
     await page.locator("#settings-panel-transparency").inputValue(),

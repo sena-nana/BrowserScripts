@@ -25,7 +25,7 @@
       "imports": []
     },
     "src/styles.css": {
-      "bytes": 19374,
+      "bytes": 19407,
       "imports": [
         {
           "path": "src/assets/folder.svg",
@@ -86,7 +86,7 @@
       "format": "esm"
     },
     "src/bookmarks/sidebar.ts": {
-      "bytes": 14788,
+      "bytes": 16744,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -175,7 +175,7 @@
       "format": "esm"
     },
     "src/main.ts": {
-      "bytes": 7941,
+      "bytes": 8012,
       "imports": [
         {
           "path": "src/styles.css",
@@ -255,7 +255,7 @@
           "bytesInOutput": 3921
         },
         "src/bookmarks/sidebar.ts": {
-          "bytesInOutput": 7072
+          "bytesInOutput": 7686
         },
         "src/core/settings.ts": {
           "bytesInOutput": 3936
@@ -267,13 +267,13 @@
           "bytesInOutput": 3358
         },
         "src/search/suggestion-engine.ts": {
-          "bytesInOutput": 1782
+          "bytesInOutput": 1783
         },
         "src/main.ts": {
-          "bytesInOutput": 3972
+          "bytesInOutput": 4004
         }
       },
-      "bytes": 30842
+      "bytes": 31495
     },
     "dist/chunks/card-GZTCGQM2.js": {
       "imports": [
@@ -406,10 +406,10 @@
       ],
       "inputs": {
         "src/styles.css": {
-          "bytesInOutput": 16011
+          "bytesInOutput": 16028
         }
       },
-      "bytes": 16012
+      "bytes": 16029
     }
   }
 }

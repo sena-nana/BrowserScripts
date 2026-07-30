@@ -652,13 +652,19 @@ body.has-custom-background .open-settings-button {
   transform: translate(-50%, 0);
 }
 
+:is(.popover, .modal, .settings-card) {
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--panel);
+  backdrop-filter: blur(7px);
+}
+
 .popover {
   position: fixed;
   z-index: 60;
-  min-width: 190px;
-  padding: 4px 0;
-  border: 1px solid var(--border);
-  background: var(--panel-solid);
+  min-width: 160px;
+  max-width: min(240px, calc(100vw - 16px));
+  padding: 4px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.23);
 }
 
@@ -666,10 +672,13 @@ body.has-custom-background .open-settings-button {
   display: block;
   width: 100%;
   cursor: pointer;
-  padding: 9px 13px;
+  padding: 5px 9px;
   border-radius: var(--control-radius);
   background: transparent;
+  font-size: 13px;
+  line-height: 18px;
   text-align: left;
+  white-space: nowrap;
 }
 
 .popover button:hover,
@@ -695,15 +704,16 @@ body.has-custom-background .open-settings-button {
 .modal {
   width: min(430px, 100%);
   padding: 22px;
-  border: 1px solid var(--border);
-  background: var(--panel-solid);
   box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+}
+
+:is(.modal, .settings-card) h2 {
+  font-size: 20px;
+  font-weight: 400;
 }
 
 .modal h2 {
   margin: 0 0 18px;
-  font-size: 20px;
-  font-weight: 400;
 }
 
 .form-field {
@@ -796,12 +806,8 @@ input[aria-invalid="true"] {
   max-height: calc(100vh - 100px);
   padding: 24px;
   overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--control-radius);
   outline: 0;
-  background: var(--panel);
   box-shadow: -5px 0 22px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(7px);
   pointer-events: auto;
   animation: settings-card-enter 180ms ease-out;
 }
@@ -834,8 +840,6 @@ input[aria-invalid="true"] {
 
 .settings-card h2 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 400;
 }
 
 .settings-close {
@@ -951,7 +955,9 @@ body.has-custom-background
     .sidebar-rail-button,
     #web-search-input,
     .open-settings-button,
-    .settings-card
+    .settings-card,
+    .popover,
+    .modal
   ) {
   background: rgb(var(--custom-panel-rgb) / var(--custom-panel-alpha));
   backdrop-filter: blur(var(--custom-backdrop-blur));
