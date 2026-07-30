@@ -293,7 +293,7 @@ try {
 
   const densityIds = await page.evaluate(async (parentId) => {
     const ids = [];
-    for (let index = 0; index < 30; index += 1) {
+    for (let index = 0; index < 40; index += 1) {
       const node = await chrome.bookmarks.create({
         parentId,
         title: `Density Bookmark ${String(index).padStart(2, "0")}`,
@@ -308,8 +308,22 @@ try {
     () =>
       Number(
         globalThis.document.querySelector("#bookmark-count")?.textContent,
-      ) >= 32,
+      ) >= 42,
   );
+
+  await page.locator("#toggle-bookmark-filter").click();
+  await page.locator(".sidebar-header.is-filtering").waitFor();
+  await page.locator("#bookmark-filter").fill("Density Bookmark 39");
+  await page.getByText("Density Bookmark 39", { exact: true }).waitFor();
+  assert.equal(await page.locator(".tree-row").count(), 1);
+  await page.locator("#close-bookmark-filter").click();
+  await page
+    .locator(".sidebar-header.is-filtering")
+    .waitFor({ state: "detached" });
+  await page.waitForFunction(
+    () => globalThis.document.querySelectorAll(".tree-row").length > 1,
+  );
+  record("integrated sidebar bookmark filtering");
 
   await openSettings();
   await page.locator("#settings-search-provider").selectOption("bing");
@@ -358,7 +372,7 @@ try {
   );
 
   await page.locator("#bookmark-tree").evaluate((element) => {
-    element.scrollTop = 228;
+    element.scrollTop = 237;
   });
   await page.locator("#settings-sidebar-density").selectOption("compact");
   await page.waitForFunction(
@@ -371,23 +385,58 @@ try {
     );
     const viewport = globalThis.document.querySelector("#bookmark-tree");
     const row = globalThis.document.querySelector(".tree-row");
-    if (!viewport || !row) {
+    const control = globalThis.document.querySelector(
+      "#toggle-bookmark-filter",
+    );
+    const menu = globalThis.document.querySelector("#sidebar-menu");
+    const count = globalThis.document.querySelector("#bookmark-count");
+    const title = globalThis.document.querySelector(".sidebar-title > span");
+    const icon = row?.querySelector(".node-icon");
+    const controlIcon = control?.querySelector(".icon");
+    if (
+      !viewport ||
+      !row ||
+      !control ||
+      !controlIcon ||
+      !menu ||
+      !count ||
+      !title ||
+      !icon
+    ) {
       throw new Error("Bookmark rows are missing");
     }
     return {
       rowHeight: row.getBoundingClientRect().height,
+      rowFontSize: globalThis.getComputedStyle(row).fontSize,
+      iconSize: icon.getBoundingClientRect().width,
       headerHeight: rootStyle
         .getPropertyValue("--sidebar-header-height")
         .trim(),
-      toolsHeight: rootStyle.getPropertyValue("--sidebar-tools-height").trim(),
+      headerControlSize: control.getBoundingClientRect().width,
+      headerIconSize: controlIcon.getBoundingClientRect().width,
+      menuMarginRight: globalThis.getComputedStyle(menu).marginRight,
+      countFontSize: globalThis.getComputedStyle(count).fontSize,
+      countFontWeight: globalThis.getComputedStyle(count).fontWeight,
+      titleFontSize: globalThis.getComputedStyle(title).fontSize,
+      titleFontWeight: globalThis.getComputedStyle(title).fontWeight,
+      titleOpacity: globalThis.getComputedStyle(title).opacity,
       scrollTop: viewport.scrollTop,
     };
   });
   assert.deepEqual(compactLayout, {
-    rowHeight: 32,
-    headerHeight: "44px",
-    toolsHeight: "40px",
-    scrollTop: 192,
+    rowHeight: 26,
+    rowFontSize: "12px",
+    iconSize: 14,
+    headerHeight: "36px",
+    headerControlSize: 34,
+    headerIconSize: 18,
+    menuMarginRight: "-2px",
+    countFontSize: "18px",
+    countFontWeight: "400",
+    titleFontSize: "10.8px",
+    titleFontWeight: "500",
+    titleOpacity: "0.7",
+    scrollTop: 165,
   });
   await page.screenshot({
     path: path.join(screenshotsPath, "bookmark-home-settings.png"),

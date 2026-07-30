@@ -32,6 +32,7 @@ export class BookmarkSidebar {
   #renderFrame = 0;
   #markedFirstRows = false;
   #rowHeight: number;
+  readonly #verticalPadding: number;
 
   constructor(
     repository: BookmarkRepository,
@@ -47,6 +48,8 @@ export class BookmarkSidebar {
     this.#showToast = options.showToast;
     this.#onExpandedChange = options.onExpandedChange;
     this.#rowHeight = options.rowHeight;
+    this.#verticalPadding =
+      Number.parseFloat(getComputedStyle(elements.content).top) || 0;
   }
 
   async initialize(expandedIds: ReadonlySet<string>): Promise<void> {
@@ -76,9 +79,12 @@ export class BookmarkSidebar {
     ) {
       return;
     }
-    const scrollRow = this.#elements.viewport.scrollTop / this.#rowHeight;
+    const scrollRow =
+      Math.max(0, this.#elements.viewport.scrollTop - this.#verticalPadding) /
+      this.#rowHeight;
     this.#rowHeight = rowHeight;
-    this.#elements.viewport.scrollTop = scrollRow * rowHeight;
+    this.#elements.viewport.scrollTop =
+      scrollRow * rowHeight + this.#verticalPadding;
     this.#render();
   }
 
@@ -133,7 +139,10 @@ export class BookmarkSidebar {
   #render(): void {
     const { viewport, spacer, content, empty } = this.#elements;
     const total = this.#rows.length;
-    spacer.style.height = `${Math.max(viewport.clientHeight, total * this.#rowHeight)}px`;
+    spacer.style.height = `${Math.max(
+      viewport.clientHeight,
+      total * this.#rowHeight + this.#verticalPadding * 2,
+    )}px`;
     empty.hidden = total > 0;
     empty.textContent = t("noBookmarks");
     if (total === 0) {
@@ -142,7 +151,10 @@ export class BookmarkSidebar {
     }
     const start = Math.max(
       0,
-      Math.floor(viewport.scrollTop / this.#rowHeight) - OVERSCAN,
+      Math.floor(
+        Math.max(0, viewport.scrollTop - this.#verticalPadding) /
+          this.#rowHeight,
+      ) - OVERSCAN,
     );
     const visibleCount =
       Math.ceil(viewport.clientHeight / this.#rowHeight) + OVERSCAN * 2;

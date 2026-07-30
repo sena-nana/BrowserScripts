@@ -11,9 +11,27 @@
     <div id="app">
       <aside id="bookmark-sidebar" aria-label="Bookmarks">
         <header class="sidebar-header">
-          <div class="sidebar-title">
-            <span id="bookmark-count">0</span>
-            <strong data-i18n="bookmarks">Bookmarks</strong>
+          <div class="sidebar-title" role="heading" aria-level="1">
+            <strong id="bookmark-count">0</strong>
+            <span data-i18n="bookmarks">Bookmarks</span>
+          </div>
+          <div class="bookmark-filter" hidden>
+            <input
+              id="bookmark-filter"
+              type="search"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Filter bookmarks"
+              data-i18n-placeholder="filterBookmarks"
+            />
+            <button
+              id="close-bookmark-filter"
+              type="button"
+              aria-label="Close"
+              data-i18n-aria="cancel"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
           </div>
           <button
             id="toggle-bookmark-filter"
@@ -43,28 +61,6 @@
             <span class="icon icon-menu" aria-hidden="true"></span>
           </button>
         </header>
-        <div class="sidebar-tools" hidden>
-          <label class="bookmark-filter">
-            <span class="icon icon-search" aria-hidden="true"></span>
-            <input
-              id="bookmark-filter"
-              type="search"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="Filter bookmarks"
-              data-i18n-placeholder="filterBookmarks"
-            />
-          </label>
-          <button
-            id="close-bookmark-filter"
-            class="icon-button"
-            type="button"
-            aria-label="Close"
-            data-i18n-aria="cancel"
-          >
-            <span aria-hidden="true">×</span>
-          </button>
-        </div>
         <div
           id="bookmark-tree"
           class="tree-viewport"
@@ -118,7 +114,7 @@
           aria-label="Settings"
           data-i18n-aria="settings"
         >
-          <span class="icon icon-settings" aria-hidden="true"></span>
+          <span class="icon icon-edit" aria-hidden="true"></span>
         </button>
       </main>
     </div>
