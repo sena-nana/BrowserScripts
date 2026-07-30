@@ -233,10 +233,34 @@ try {
     }
     return folder.id;
   });
+  const [bookmarkFontWeight, folderFontWeight] = await Promise.all([
+    page
+      .locator(`.tree-row[data-id="${bookmarkId}"] .tree-label`)
+      .evaluate((element) => globalThis.getComputedStyle(element).fontWeight),
+    page
+      .locator(`.tree-row[data-id="${folderId}"] .tree-label`)
+      .evaluate((element) => globalThis.getComputedStyle(element).fontWeight),
+  ]);
+  assert.equal(folderFontWeight, bookmarkFontWeight);
+  await page
+    .locator(`.tree-row[data-id="${bookmarkId}"]`)
+    .evaluate((element) => {
+      element.dataset.selectionRenderSentinel = "preserved";
+    });
 
   await page
     .locator(`.tree-row[data-id="${folderId}"]`)
     .click({ button: "right" });
+  await page.evaluate(
+    () => new Promise((resolve) => globalThis.requestAnimationFrame(resolve)),
+  );
+  assert.equal(
+    await page
+      .locator(`.tree-row[data-id="${bookmarkId}"]`)
+      .getAttribute("data-selection-render-sentinel"),
+    "preserved",
+  );
+  record("selection updates without rebuilding visible bookmark rows");
   await page.locator('.tree-popover button[data-action="edit"]').click();
   assert.equal(
     await page.locator(".modal input[type='text']").nth(1).isHidden(),
@@ -536,6 +560,12 @@ try {
       { background: "rgba(255, 255, 255, 0.8)", blur: "blur(7px)" },
     ],
   );
+  await page
+    .locator(".tree-row")
+    .first()
+    .evaluate((element) => {
+      element.dataset.settingsRenderSentinel = "preserved";
+    });
   await page.locator("#settings-search-provider").selectOption("bing");
   await page.waitForFunction(
     () =>
@@ -580,6 +610,13 @@ try {
         .querySelector("#bookmark-sidebar")
         ?.getBoundingClientRect().width === 400,
   );
+  assert.equal(
+    await page
+      .locator(".tree-row[data-settings-render-sentinel]")
+      .getAttribute("data-settings-render-sentinel"),
+    "preserved",
+  );
+  record("unrelated setting changes preserve visible bookmark rows");
 
   await page.locator("#bookmark-tree").evaluate((element) => {
     element.scrollTop = 237;
@@ -674,6 +711,27 @@ try {
     path: path.join(screenshotsPath, "bookmark-home-settings.png"),
   });
   await page.locator(".settings-close").click();
+  await page.addInitScript(() => {
+    globalThis.__visibleSidebarWidths = [];
+    const sampleVisibleWidth = () => {
+      const body = globalThis.document.body;
+      const sidebar = globalThis.document.querySelector("#bookmark-sidebar");
+      if (
+        body &&
+        sidebar &&
+        globalThis.getComputedStyle(body).visibility !== "hidden"
+      ) {
+        globalThis.__visibleSidebarWidths.push(
+          sidebar.getBoundingClientRect().width,
+        );
+        if (globalThis.__visibleSidebarWidths.length >= 12) {
+          return;
+        }
+      }
+      globalThis.requestAnimationFrame(sampleVisibleWidth);
+    };
+    globalThis.requestAnimationFrame(sampleVisibleWidth);
+  });
   await page.reload();
   await page.waitForSelector("#app");
   await page.waitForFunction(
@@ -682,6 +740,14 @@ try {
         .querySelector("#bookmark-sidebar")
         ?.getBoundingClientRect().width === 400,
   );
+  await page.waitForFunction(
+    () => globalThis.__visibleSidebarWidths?.length >= 12,
+  );
+  const initialVisibleSidebarWidths = await page.evaluate(
+    () => globalThis.__visibleSidebarWidths,
+  );
+  assert.deepEqual([...new Set(initialVisibleSidebarWidths)], [400]);
+  record("persisted sidebar width is applied before the first visible frame");
   const persistedSettings = await page.evaluate(async () => {
     const stored = await chrome.storage.sync.get("settings");
     return {

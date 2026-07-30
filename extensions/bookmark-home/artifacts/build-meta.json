@@ -25,7 +25,7 @@
       "imports": []
     },
     "src/styles.css": {
-      "bytes": 19662,
+      "bytes": 19723,
       "imports": [
         {
           "path": "src/assets/folder.svg",
@@ -86,7 +86,7 @@
       "format": "esm"
     },
     "src/bookmarks/sidebar.ts": {
-      "bytes": 20613,
+      "bytes": 21125,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -107,7 +107,7 @@
       "format": "esm"
     },
     "src/core/settings.ts": {
-      "bytes": 8959,
+      "bytes": 8919,
       "imports": [],
       "format": "esm"
     },
@@ -175,7 +175,7 @@
       "format": "esm"
     },
     "src/main.ts": {
-      "bytes": 7946,
+      "bytes": 8879,
       "imports": [
         {
           "path": "src/styles.css",
@@ -255,10 +255,10 @@
           "bytesInOutput": 6048
         },
         "src/bookmarks/sidebar.ts": {
-          "bytesInOutput": 9663
+          "bytesInOutput": 9879
         },
         "src/core/settings.ts": {
-          "bytesInOutput": 3936
+          "bytesInOutput": 3916
         },
         "src/home/controller.ts": {
           "bytesInOutput": 289
@@ -270,10 +270,10 @@
           "bytesInOutput": 1783
         },
         "src/main.ts": {
-          "bytesInOutput": 3972
+          "bytesInOutput": 4357
         }
       },
-      "bytes": 36069
+      "bytes": 36650
     },
     "dist/chunks/card-CPUOBMEM.js": {
       "imports": [
@@ -406,10 +406,10 @@
       ],
       "inputs": {
         "src/styles.css": {
-          "bytesInOutput": 16240
+          "bytesInOutput": 16292
         }
       },
-      "bytes": 16241
+      "bytes": 16293
     }
   }
 }
