@@ -13,6 +13,8 @@
   --accent: #4b78c2;
   --danger: #b43e45;
   --shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+  --control-radius: 6px;
+  --focus-ring: color-mix(in srgb, var(--accent) 32%, transparent);
   --row-height: 38px;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
@@ -156,9 +158,11 @@ body.sidebar-collapsed #bookmark-sidebar {
 }
 
 .icon-button:hover,
-.icon-button:focus-visible,
 .edit-home-button:hover,
-.edit-home-button:focus-visible {
+.sidebar-rail-button:hover,
+.icon-button:focus-visible,
+.edit-home-button:focus-visible,
+.sidebar-rail-button:focus-visible {
   outline: 0;
   background: var(--hover);
 }
@@ -181,7 +185,12 @@ body.sidebar-collapsed #bookmark-sidebar {
   align-items: center;
   gap: 8px;
   padding: 0 9px;
+  border-radius: var(--control-radius);
   background: var(--panel-muted);
+}
+
+.bookmark-filter:focus-within {
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .bookmark-filter input {
@@ -247,6 +256,7 @@ body.sidebar-collapsed #bookmark-sidebar {
   height: 30px;
   flex: 0 0 25px;
   cursor: pointer;
+  border-radius: var(--control-radius);
   background: transparent;
 }
 
@@ -359,6 +369,7 @@ body.sidebar-collapsed #bookmark-sidebar {
   height: 42px;
   border: 1px solid var(--border);
   border-left: 0;
+  border-radius: 0 var(--control-radius) var(--control-radius) 0;
   background: var(--panel);
   font-size: 22px;
   box-shadow: 1px 2px 8px rgba(0, 0, 0, 0.12);
@@ -399,7 +410,7 @@ body.sidebar-collapsed .sidebar-rail-button {
   height: 100%;
   padding: 0 70px 0 30px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--control-radius);
   outline: 0;
   background: var(--panel-solid);
   box-shadow: var(--shadow);
@@ -557,6 +568,7 @@ body.has-custom-background .edit-home-button {
   width: 100%;
   cursor: pointer;
   padding: 9px 13px;
+  border-radius: var(--control-radius);
   background: transparent;
   text-align: left;
 }
@@ -614,19 +626,26 @@ body.has-custom-background .edit-home-button {
   font-size: 12px;
 }
 
-.form-field input,
-.form-field select,
-.settings-group select,
-.settings-group input[type="text"],
-.edit-field input,
-.edit-field select {
+:is(.form-field, .settings-group, .edit-field)
+  :is(input:not([type="checkbox"], [type="range"]), select) {
   width: 100%;
   height: 36px;
   padding: 0 9px;
   border: 1px solid var(--border);
-  border-radius: 0;
+  border-radius: var(--control-radius);
   outline: 0;
   background: var(--panel-muted);
+}
+
+:is(.form-field, .settings-group, .edit-field)
+  :is(input:not([type="checkbox"], [type="range"]), select):hover {
+  border-color: color-mix(in srgb, var(--text) 28%, transparent);
+}
+
+:is(.form-field, .settings-group, .edit-field)
+  :is(input:not([type="checkbox"], [type="range"]), select):focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 input[aria-invalid="true"] {
@@ -645,7 +664,17 @@ input[aria-invalid="true"] {
   min-height: 36px;
   cursor: pointer;
   padding: 0 14px;
+  border-radius: var(--control-radius);
   background: var(--panel-muted);
+}
+
+:is(.button, .edit-action):hover {
+  background: var(--hover);
+}
+
+:is(.button, .edit-action):focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .button.primary,
@@ -708,10 +737,46 @@ input[aria-invalid="true"] {
   justify-content: space-between;
 }
 
-.switch-row input,
-.edit-check input {
+:is(.switch-row, .edit-check) input[type="checkbox"] {
+  position: relative;
   width: 36px;
-  height: 18px;
+  height: 20px;
+  flex: 0 0 36px;
+  margin: 0;
+  padding: 2px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  outline: 0;
+  background: var(--active);
+  cursor: pointer;
+}
+
+:is(.switch-row, .edit-check) input[type="checkbox"]::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--panel-solid);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  transition: transform 120ms ease;
+}
+
+:is(.switch-row, .edit-check) input[type="checkbox"]:checked {
+  background: var(--text);
+}
+
+:is(.switch-row, .edit-check) input[type="checkbox"]:checked::before {
+  transform: translateX(16px);
+}
+
+:is(.switch-row, .edit-check) input[type="checkbox"]:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.settings-group input[type="range"] {
+  width: 100%;
   accent-color: var(--text);
 }
 
@@ -769,9 +834,17 @@ input[aria-invalid="true"] {
   color: #fff;
 }
 
+.home-edit-bar .edit-action:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .home-edit-bar .edit-action.primary {
   background: #fff;
   color: #444;
+}
+
+.home-edit-bar .edit-action.primary:hover {
+  background: rgba(255, 255, 255, 0.88);
 }
 
 .edit-bar-spacer {
@@ -841,6 +914,24 @@ body.home-editing .edit-home-button {
 
   .home-edit-bar {
     padding: 0 8px;
+  }
+}
+
+@media (max-width: 400px) {
+  #home-editor {
+    bottom: 104px;
+  }
+
+  .home-edit-bar {
+    height: 104px;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 6px;
+  }
+
+  .home-edit-bar .edit-action {
+    padding: 0 10px;
+    white-space: nowrap;
   }
 }
 

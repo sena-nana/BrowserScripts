@@ -17,7 +17,7 @@
       "imports": []
     },
     "src/styles.css": {
-      "bytes": 14453,
+      "bytes": 16741,
       "imports": [
         {
           "path": "src/assets/search.svg",
@@ -414,10 +414,10 @@
       ],
       "inputs": {
         "src/styles.css": {
-          "bytesInOutput": 11720
+          "bytesInOutput": 13630
         }
       },
-      "bytes": 11721
+      "bytes": 13631
     }
   }
 }
