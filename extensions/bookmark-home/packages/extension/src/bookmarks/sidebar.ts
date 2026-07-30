@@ -8,6 +8,13 @@ import {
 import { BookmarkTreeModel } from "./tree-model";
 
 const OVERSCAN = 7;
+const POPOVER_GAP = 4;
+const POPOVER_VIEWPORT_INSET = 8;
+
+interface MenuPoint {
+  x: number;
+  y: number;
+}
 
 interface SidebarElements {
   viewport: HTMLElement;
@@ -89,12 +96,20 @@ export class BookmarkSidebar {
   }
 
   #bindEvents(): void {
-    this.#elements.viewport.addEventListener("scroll", () =>
-      this.#scheduleRender(),
-    );
-    window.addEventListener("resize", () => this.#scheduleRender(), {
-      passive: true,
+    this.#elements.viewport.addEventListener("scroll", () => {
+      this.#closePopover();
+      this.#scheduleRender();
     });
+    window.addEventListener(
+      "resize",
+      () => {
+        this.#closePopover();
+        this.#scheduleRender();
+      },
+      {
+        passive: true,
+      },
+    );
     this.#elements.filter.addEventListener("input", () => {
       window.clearTimeout(this.#filterTimer);
       this.#filterTimer = window.setTimeout(() => {
@@ -109,7 +124,16 @@ export class BookmarkSidebar {
     });
     document.addEventListener("click", (event) => {
       if (!(event.target as Element).closest(".popover, .tree-menu")) {
-        this.#elements.popoverRoot.replaceChildren();
+        this.#closePopover();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape" &&
+        this.#elements.popoverRoot.querySelector(".tree-popover")
+      ) {
+        event.preventDefault();
+        this.#closePopover();
       }
     });
   }
@@ -230,10 +254,23 @@ export class BookmarkSidebar {
     menu.addEventListener("click", (event) => {
       event.stopPropagation();
       this.#select(row.node.id);
-      this.#openMenu(row.node, menu);
+      this.#openMenu(
+        row.node,
+        menu,
+        event.detail > 0 ? { x: event.clientX, y: event.clientY } : undefined,
+      );
     });
 
     element.draggable = this.#canModify(row.node);
+    element.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.#select(row.node.id);
+      this.#openMenu(row.node, label, {
+        x: event.clientX,
+        y: event.clientY,
+      });
+    });
     element.addEventListener("dragstart", (event) => {
       this.#draggedId = row.node.id;
       event.dataTransfer?.setData("text/plain", row.node.id);
@@ -304,13 +341,10 @@ export class BookmarkSidebar {
     }
   }
 
-  #openMenu(node: BookmarkNode, anchor: HTMLElement): void {
+  #openMenu(node: BookmarkNode, anchor: HTMLElement, point?: MenuPoint): void {
     const popover = document.createElement("div");
-    popover.className = "popover";
+    popover.className = "popover tree-popover";
     popover.setAttribute("role", "menu");
-    const rect = anchor.getBoundingClientRect();
-    popover.style.left = `${Math.min(rect.left, window.innerWidth - 210)}px`;
-    popover.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - 230)}px`;
 
     const addAction = (
       id: string,
@@ -324,7 +358,7 @@ export class BookmarkSidebar {
       button.textContent = label;
       button.className = className;
       button.addEventListener("click", () => {
-        this.#elements.popoverRoot.replaceChildren();
+        this.#closePopover();
         action();
       });
       popover.append(button);
@@ -350,7 +384,52 @@ export class BookmarkSidebar {
       addAction("delete", t("delete"), () => void this.#delete(node), "danger");
     }
     this.#elements.popoverRoot.replaceChildren(popover);
+    this.#positionMenu(popover, anchor, point);
     popover.querySelector<HTMLButtonElement>("button")?.focus();
+  }
+
+  #positionMenu(
+    popover: HTMLElement,
+    anchor: HTMLElement,
+    point?: MenuPoint,
+  ): void {
+    const anchorRect = anchor.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const origin = point ?? {
+      x: anchorRect.left,
+      y: anchorRect.bottom + POPOVER_GAP,
+    };
+    const preferredLeft =
+      origin.x + popoverRect.width <= window.innerWidth - POPOVER_VIEWPORT_INSET
+        ? origin.x
+        : origin.x - popoverRect.width;
+    const preferredTop =
+      origin.y + popoverRect.height <=
+      window.innerHeight - POPOVER_VIEWPORT_INSET
+        ? origin.y
+        : origin.y - popoverRect.height;
+    const maxLeft = Math.max(
+      POPOVER_VIEWPORT_INSET,
+      window.innerWidth - popoverRect.width - POPOVER_VIEWPORT_INSET,
+    );
+    const maxTop = Math.max(
+      POPOVER_VIEWPORT_INSET,
+      window.innerHeight - popoverRect.height - POPOVER_VIEWPORT_INSET,
+    );
+    const left = Math.min(
+      Math.max(POPOVER_VIEWPORT_INSET, preferredLeft),
+      maxLeft,
+    );
+    const top = Math.min(
+      Math.max(POPOVER_VIEWPORT_INSET, preferredTop),
+      maxTop,
+    );
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+  }
+
+  #closePopover(): void {
+    this.#elements.popoverRoot.replaceChildren();
   }
 
   async #edit(node: BookmarkNode): Promise<void> {

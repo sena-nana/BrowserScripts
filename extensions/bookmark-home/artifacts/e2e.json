@@ -1,17 +1,20 @@
 {
-  "startedAt": "2026-07-30T07:56:13.720Z",
-  "completedAt": "2026-07-30T07:56:21.417Z",
+  "startedAt": "2026-07-30T08:39:56.757Z",
+  "completedAt": "2026-07-30T08:40:03.522Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
     "transparent preset desktop layout",
+    "root bookmark folders remain protected in the context menu",
     "create bookmark through UI",
-    "edit bookmark through UI",
+    "edit bookmark title and URL through the context menu",
+    "edit folder title through the context menu",
     "move bookmark with keyboard-accessible dialog",
     "confirmed bookmark deletion",
     "live bookmark synchronization without a shortcut grid",
     "bookmark, history, and online search suggestions",
     "anchored settings card opens from both entry points",
+    "context menu flips above bottom rows and closes on scroll",
     "integrated sidebar bookmark filtering",
     "settings apply immediately and persist valid values",
     "custom glass settings preview immediately and persist",
@@ -27,5 +30,5 @@
     "screenshots/bookmark-home-settings.png",
     "screenshots/bookmark-home-narrow.png"
   ],
-  "passed": 18
+  "passed": 21
 }
