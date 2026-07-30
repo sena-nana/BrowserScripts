@@ -377,31 +377,6 @@ body.sidebar-collapsed .sidebar-rail-button {
   justify-content: center;
 }
 
-#top-links {
-  position: absolute;
-  top: 10px;
-  right: 20px;
-  display: flex;
-  max-width: calc(100% - 40px);
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.top-link {
-  display: block;
-  padding: 7px 10px;
-  color: var(--text);
-  font-size: 14px;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.top-link:hover,
-.top-link:focus-visible {
-  outline: 0;
-  background: var(--hover);
-}
-
 .search-stage {
   display: flex;
   width: min(760px, calc(100vw - var(--sidebar-width) - 40px));
@@ -506,11 +481,6 @@ body.has-custom-background #web-search-input {
 .suggestion-source {
   color: var(--muted);
   font-size: 11px;
-}
-
-body.has-custom-background .top-link {
-  color: #fff;
-  text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.75);
 }
 
 .edit-home-button {
@@ -649,8 +619,7 @@ body.has-custom-background .edit-home-button {
 .settings-group select,
 .settings-group input[type="text"],
 .edit-field input,
-.edit-field select,
-.link-editor-row input {
+.edit-field select {
   width: 100%;
   height: 36px;
   padding: 0 9px;
@@ -774,18 +743,6 @@ input[aria-invalid="true"] {
   border-top: 1px solid var(--border);
 }
 
-.link-editor-list {
-  display: grid;
-  gap: 5px;
-}
-
-.link-editor-row {
-  display: grid;
-  grid-template-columns: minmax(90px, 1fr) minmax(130px, 1.5fr);
-  align-items: center;
-  gap: 5px;
-}
-
 .form-error {
   margin: 6px 0;
   color: var(--danger);
@@ -874,24 +831,12 @@ body.home-editing .edit-home-button {
 }
 
 @media (max-width: 560px) {
-  #top-links {
-    right: 8px;
-  }
-
   .search-stage {
     min-height: 330px;
   }
 
   #web-search {
     width: calc(100% - 16px);
-  }
-
-  .link-editor-row {
-    grid-template-columns: 1fr;
-  }
-
-  .link-editor-row input:last-child {
-    grid-column: 1;
   }
 
   .home-edit-bar {

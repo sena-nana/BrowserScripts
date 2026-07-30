@@ -188,17 +188,13 @@ async function run(): Promise<void> {
   await sidebar.initialize(settingsStore.expandedFolderIds);
   bindBookmarkCount();
 
-  const home = new HomeController(
-    requiredElement("#top-links"),
-    settingsStore.settings,
-    settingsStore.homeBackground,
-  );
+  const home = new HomeController(settingsStore.homeBackground);
   home.initialize();
 
   settingsStore.subscribe((settings) => {
     applyAppearance(settings.appearance);
     search.updateSettings(settings.search);
-    home.update(settings, settingsStore.homeBackground);
+    home.update(settingsStore.homeBackground);
   });
 
   requiredElement<HTMLButtonElement>("#edit-home").addEventListener(
@@ -209,12 +205,12 @@ async function run(): Promise<void> {
           store: settingsStore,
           preview: (settings, background) => {
             search.updateSettings(settings.search);
-            home.preview(settings, background);
+            home.preview(background);
           },
           cancelPreview: () => {
             const settings = settingsStore.settings;
             search.updateSettings(settings.search);
-            home.update(settings, settingsStore.homeBackground);
+            home.update(settingsStore.homeBackground);
           },
           showToast,
         });

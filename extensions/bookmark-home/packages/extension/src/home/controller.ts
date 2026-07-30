@@ -1,35 +1,23 @@
-import type { HomeBackgroundV1, HomeLink, SettingsV2 } from "../core/types";
-import { providerHomepage } from "../search/providers";
+import type { HomeBackgroundV1 } from "../core/types";
 
 export class HomeController {
-  readonly #topLinks: HTMLElement;
-  #settings: SettingsV2;
   #background: HomeBackgroundV1 | null;
 
-  constructor(
-    topLinks: HTMLElement,
-    settings: SettingsV2,
-    background: HomeBackgroundV1 | null,
-  ) {
-    this.#topLinks = topLinks;
-    this.#settings = structuredClone(settings);
+  constructor(background: HomeBackgroundV1 | null) {
     this.#background = background ? structuredClone(background) : null;
   }
 
   initialize(): void {
     this.#applyBackground();
-    this.#renderTopLinks();
   }
 
-  update(settings: SettingsV2, background: HomeBackgroundV1 | null): void {
-    this.#settings = structuredClone(settings);
+  update(background: HomeBackgroundV1 | null): void {
     this.#background = background ? structuredClone(background) : null;
     this.#applyBackground();
-    this.#renderTopLinks();
   }
 
-  preview(settings: SettingsV2, background: HomeBackgroundV1 | null): void {
-    this.update(settings, background);
+  preview(background: HomeBackgroundV1 | null): void {
+    this.update(background);
   }
 
   #applyBackground(): void {
@@ -40,23 +28,5 @@ export class HomeController {
     document.body.style.backgroundImage = this.#background
       ? `url("${this.#background.dataUrl}")`
       : "";
-  }
-
-  #renderTopLinks(): void {
-    const links =
-      this.#settings.home.topLinks.length > 0
-        ? this.#settings.home.topLinks
-        : [providerHomepage(this.#settings.search)];
-    this.#topLinks.replaceChildren(...links.map((link) => this.#link(link)));
-  }
-
-  #link(link: HomeLink): HTMLAnchorElement {
-    const anchor = document.createElement("a");
-    anchor.className = "top-link";
-    anchor.href = link.url;
-    anchor.title = link.title;
-    anchor.dataset.id = link.id;
-    anchor.textContent = link.title;
-    return anchor;
   }
 }

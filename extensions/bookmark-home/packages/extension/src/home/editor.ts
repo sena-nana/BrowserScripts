@@ -1,12 +1,7 @@
 import { t } from "../core/i18n";
-import {
-  sanitizeHomeLinks,
-  sanitizeHomeUrl,
-  type SettingsStore,
-} from "../core/settings";
+import type { SettingsStore } from "../core/settings";
 import type {
   HomeBackgroundV1,
-  HomeLink,
   SearchProviderId,
   SettingsV2,
 } from "../core/types";
@@ -18,12 +13,6 @@ interface EditorContext {
   preview: (settings: SettingsV2, background: HomeBackgroundV1 | null) => void;
   cancelPreview: () => void;
   showToast: (message: string) => void;
-}
-
-interface LinkFields {
-  row: HTMLElement;
-  title: HTMLInputElement;
-  url: HTMLInputElement;
 }
 
 function option(value: string, label: string): HTMLOptionElement {
@@ -51,59 +40,6 @@ function checkbox(label: string): {
   const wrapper = field(label, input);
   wrapper.classList.add("edit-check");
   return { wrapper, input };
-}
-
-function linkFields(link?: HomeLink): LinkFields {
-  const row = document.createElement("div");
-  row.className = "link-editor-row";
-  const title = document.createElement("input");
-  title.type = "text";
-  title.maxLength = 80;
-  title.placeholder = t("name");
-  title.value = link?.title ?? "";
-  const url = document.createElement("input");
-  url.type = "url";
-  url.maxLength = 2_048;
-  url.placeholder = "https://";
-  url.value = link?.url ?? "";
-  row.append(title, url);
-  return { row, title, url };
-}
-
-function collectLinks(
-  fields: readonly LinkFields[],
-  maximum: number,
-): {
-  links: HomeLink[];
-  valid: boolean;
-} {
-  let valid = true;
-  const candidates = fields.map(({ title, url }, index) => {
-    const cleanTitle = title.value.trim();
-    const cleanUrl = url.value.trim();
-    if (!cleanTitle && !cleanUrl) {
-      return null;
-    }
-    const normalized = sanitizeHomeUrl(cleanUrl);
-    if (!cleanTitle || !normalized) {
-      valid = false;
-      url.setAttribute("aria-invalid", "true");
-      return null;
-    }
-    url.removeAttribute("aria-invalid");
-    return {
-      id: `home-link-${index}-${normalized}`,
-      title: cleanTitle,
-      url: normalized,
-    };
-  });
-  return {
-    links: sanitizeHomeLinks(
-      candidates.filter((link) => link !== null),
-      maximum,
-    ),
-    valid,
-  };
 }
 
 export function openHomeEditor(context: EditorContext): void {
@@ -162,18 +98,6 @@ export function openHomeEditor(context: EditorContext): void {
     online.wrapper,
   );
 
-  const linksGroup = document.createElement("section");
-  linksGroup.className = "home-edit-group";
-  const linksHeading = document.createElement("h3");
-  linksHeading.textContent = t("topLinks");
-  const topLinkList = document.createElement("div");
-  topLinkList.className = "link-editor-list";
-  const topFields = Array.from({ length: 6 }, (_, index) =>
-    linkFields(draft.home.topLinks[index]),
-  );
-  topLinkList.append(...topFields.map((entry) => entry.row));
-  linksGroup.append(linksHeading, topLinkList);
-
   const bar = document.createElement("footer");
   bar.className = "home-edit-bar";
   const backgroundInput = document.createElement("input");
@@ -201,7 +125,7 @@ export function openHomeEditor(context: EditorContext): void {
   save.textContent = t("save");
   bar.append(backgroundInput, upload, removeBackground, spacer, cancel, save);
 
-  panel.append(heading, error, searchGroup, linksGroup);
+  panel.append(heading, error, searchGroup);
   root.append(panel, bar);
   document.body.classList.add("home-editing");
 
@@ -227,8 +151,6 @@ export function openHomeEditor(context: EditorContext): void {
 
   const preview = (): void => {
     syncDraft();
-    const top = collectLinks(topFields, 6);
-    draft.home.topLinks = top.links;
     context.preview(draft, background);
   };
 
@@ -246,10 +168,6 @@ export function openHomeEditor(context: EditorContext): void {
   });
   for (const control of [customName, customUrl, history.input, online.input]) {
     control.addEventListener("change", preview);
-  }
-  for (const entry of topFields) {
-    entry.title.addEventListener("input", preview);
-    entry.url.addEventListener("input", preview);
   }
   upload.addEventListener("click", () => backgroundInput.click());
   backgroundInput.addEventListener("change", async () => {
@@ -279,16 +197,14 @@ export function openHomeEditor(context: EditorContext): void {
   cancel.addEventListener("click", () => finish(true));
   save.addEventListener("click", async () => {
     syncDraft();
-    const top = collectLinks(topFields, 6);
     const customSearchValid =
       draft.search.provider !== "custom" ||
       isValidCustomSearchUrl(draft.search.customSearchUrl);
-    if (!top.valid || !customSearchValid) {
+    if (!customSearchValid) {
       error.textContent = t("urlInvalid");
       error.hidden = false;
       return;
     }
-    draft.home.topLinks = top.links;
     save.disabled = true;
     try {
       await context.store.saveHomeDraft(draft, background);
