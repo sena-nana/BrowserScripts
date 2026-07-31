@@ -42,6 +42,8 @@ export class BookmarkSidebar {
   #headerTimer = 0;
   #headerSequence = 0;
   #searchSequence = 0;
+  #scopeSequence = 0;
+  #popoverSequence = 0;
   #renderFrame = 0;
   #markedFirstRows = false;
   #rowHeight: number;
@@ -87,8 +89,8 @@ export class BookmarkSidebar {
     window.cancelAnimationFrame(this.#renderFrame);
   }
 
-  get scope(): BookmarkViewScope {
-    return this.model.scope;
+  get targetScope(): BookmarkViewScope {
+    return this.model.targetScope;
   }
 
   get hasTrash(): boolean {
@@ -96,21 +98,32 @@ export class BookmarkSidebar {
   }
 
   async setScope(scope: BookmarkViewScope): Promise<void> {
-    if (scope === this.model.scope) {
-      return;
-    }
+    const sequence = ++this.#scopeSequence;
     this.#closePopover();
     this.#selectedId = null;
     this.#draggedId = null;
     this.#searchSequence += 1;
     this.#elements.filter.value = "";
     this.#elements.viewport.scrollTop = 0;
-    if (!(await this.model.setScope(scope))) {
-      return;
+    try {
+      if (
+        !(await this.model.setScope(scope)) ||
+        sequence !== this.#scopeSequence
+      ) {
+        return;
+      }
+      this.#rows = this.model.rows();
+      this.#render();
+      await this.#updateHeader();
+    } catch {
+      if (sequence !== this.#scopeSequence) {
+        return;
+      }
+      this.#rows = this.model.rows();
+      this.#render();
+      await this.#updateHeader();
+      this.#showToast(t("unableToLoadBookmarks"));
     }
-    this.#rows = this.model.rows();
-    this.#render();
-    await this.#updateHeader();
   }
 
   setRowHeight(rowHeight: number): void {
@@ -209,11 +222,12 @@ export class BookmarkSidebar {
 
   async #updateHeader(): Promise<void> {
     const sequence = ++this.#headerSequence;
+    const scope = this.model.scope;
     const count = await this.model.countBookmarks();
-    if (sequence !== this.#headerSequence) {
+    if (sequence !== this.#headerSequence || scope !== this.model.scope) {
       return;
     }
-    const trash = this.model.scope === "trash";
+    const trash = scope === "trash";
     this.#elements.count.textContent = String(count);
     this.#elements.title.textContent = t(trash ? "trash" : "bookmarks");
     this.#elements.add.classList.toggle("is-text-action", trash);
@@ -272,9 +286,11 @@ export class BookmarkSidebar {
   }
 
   #createRow(row: TreeRow, index: number): HTMLElement {
+    const scope = this.model.scope;
     const element = document.createElement("div");
     element.className = "tree-row";
     element.dataset.id = row.node.id;
+    element.dataset.scope = scope;
     element.setAttribute("role", "treeitem");
     element.setAttribute("aria-level", String(row.depth + 1));
     element.setAttribute(
@@ -328,20 +344,20 @@ export class BookmarkSidebar {
     menu.addEventListener("click", (event) => {
       event.stopPropagation();
       this.#select(row.node.id);
-      this.#openMenu(
+      void this.#openMenu(
         row.node,
+        scope,
         menu,
         event.detail > 0 ? { x: event.clientX, y: event.clientY } : undefined,
       );
     });
 
-    element.draggable =
-      this.model.scope === "bookmarks" && this.#canModify(row.node);
+    element.draggable = scope === "bookmarks" && this.#canModify(row.node);
     element.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       event.stopPropagation();
       this.#select(row.node.id);
-      this.#openMenu(row.node, label, {
+      void this.#openMenu(row.node, scope, label, {
         x: event.clientX,
         y: event.clientY,
       });
@@ -375,7 +391,7 @@ export class BookmarkSidebar {
     element.addEventListener("drop", (event) => {
       event.preventDefault();
       element.classList.remove("is-drop-target");
-      void this.#dropOn(row.node);
+      void this.#dropOn(row.node, scope);
     });
     element.addEventListener("click", () => this.#select(row.node.id));
     element.append(label, menu);
@@ -383,6 +399,9 @@ export class BookmarkSidebar {
   }
 
   async #toggleFolder(id: string): Promise<void> {
+    if (this.model.isScopeSwitching) {
+      return;
+    }
     await this.model.toggleFolder(id);
     if (this.model.scope === "bookmarks") {
       this.#onExpandedChange(this.model.expandedIds);
@@ -412,7 +431,7 @@ export class BookmarkSidebar {
   }
 
   async #createAtSelection(initialType?: "bookmark" | "folder"): Promise<void> {
-    if (this.model.scope !== "bookmarks") {
+    if (this.model.scope !== "bookmarks" || this.model.isScopeSwitching) {
       return;
     }
     const selected = this.#selectedId
@@ -442,7 +461,19 @@ export class BookmarkSidebar {
     }
   }
 
-  #openMenu(node: BookmarkNode, anchor: HTMLElement, point?: MenuPoint): void {
+  async #openMenu(
+    node: BookmarkNode,
+    scope: BookmarkViewScope,
+    anchor: HTMLElement,
+    point?: MenuPoint,
+  ): Promise<void> {
+    const sequence = ++this.#popoverSequence;
+    if (
+      !(await this.model.isNodeInScope(node.id, scope)) ||
+      sequence !== this.#popoverSequence
+    ) {
+      return;
+    }
     const popover = document.createElement("div");
     popover.className = "popover tree-popover";
     popover.setAttribute("role", "menu");
@@ -470,12 +501,16 @@ export class BookmarkSidebar {
         window.open(node.url, "_blank", "noopener"),
       );
     }
-    if (this.model.scope === "trash") {
-      addAction("restore", t("restoreTo"), () => void this.#restore(node));
+    if (scope === "trash") {
+      addAction(
+        "restore",
+        t("restoreTo"),
+        () => void this.#restore(node, scope),
+      );
       addAction(
         "permanently-delete",
         t("permanentlyDelete"),
-        () => void this.#deletePermanently(node),
+        () => void this.#deletePermanently(node, scope),
         "danger",
       );
     } else if (!node.url && !node.unmodifiable) {
@@ -488,10 +523,19 @@ export class BookmarkSidebar {
         void this.#createAtSelection("folder");
       });
     }
-    if (this.model.scope === "bookmarks" && this.#canModify(node)) {
-      addAction("edit", t("edit"), () => void this.#edit(node));
-      addAction("move", t("moveTo"), () => void this.#moveWithDialog(node));
-      addAction("delete", t("delete"), () => void this.#delete(node), "danger");
+    if (scope === "bookmarks" && this.#canModify(node)) {
+      addAction("edit", t("edit"), () => void this.#edit(node, scope));
+      addAction(
+        "move",
+        t("moveTo"),
+        () => void this.#moveWithDialog(node, scope),
+      );
+      addAction(
+        "delete",
+        t("delete"),
+        () => void this.#delete(node, scope),
+        "danger",
+      );
     }
     this.#elements.popoverRoot.replaceChildren(popover);
     this.#positionMenu(popover, anchor, point);
@@ -539,12 +583,28 @@ export class BookmarkSidebar {
   }
 
   #closePopover(): void {
+    this.#popoverSequence += 1;
     this.#elements.popoverRoot.replaceChildren();
   }
 
-  async #edit(node: BookmarkNode): Promise<void> {
+  async #confirmInScope(
+    node: BookmarkNode,
+    scope: BookmarkViewScope,
+    confirm: (node: BookmarkNode) => Promise<boolean>,
+  ): Promise<boolean> {
+    return (
+      (await this.model.isNodeInScope(node.id, scope)) &&
+      (await confirm(node)) &&
+      (await this.model.isNodeInScope(node.id, scope))
+    );
+  }
+
+  async #edit(node: BookmarkNode, scope: BookmarkViewScope): Promise<void> {
+    if (!(await this.model.isNodeInScope(node.id, scope))) {
+      return;
+    }
     const result = await openEntryDialog({ mode: "edit", node });
-    if (!result) {
+    if (!result || !(await this.model.isNodeInScope(node.id, scope))) {
       return;
     }
     try {
@@ -557,8 +617,8 @@ export class BookmarkSidebar {
     }
   }
 
-  async #delete(node: BookmarkNode): Promise<void> {
-    if (!(await confirmDelete(node))) {
+  async #delete(node: BookmarkNode, scope: BookmarkViewScope): Promise<void> {
+    if (!(await this.#confirmInScope(node, scope, confirmDelete))) {
       return;
     }
     try {
@@ -571,8 +631,11 @@ export class BookmarkSidebar {
     }
   }
 
-  async #deletePermanently(node: BookmarkNode): Promise<void> {
-    if (!(await confirmPermanentDelete(node))) {
+  async #deletePermanently(
+    node: BookmarkNode,
+    scope: BookmarkViewScope,
+  ): Promise<void> {
+    if (!(await this.#confirmInScope(node, scope, confirmPermanentDelete))) {
       return;
     }
     try {
@@ -586,7 +649,14 @@ export class BookmarkSidebar {
   }
 
   async #emptyTrash(): Promise<void> {
-    if (!this.model.hasScopeItems || !(await confirmEmptyTrash())) {
+    if (
+      this.model.scope !== "trash" ||
+      this.model.isScopeSwitching ||
+      !this.model.hasScopeItems ||
+      !(await confirmEmptyTrash()) ||
+      this.model.scope !== "trash" ||
+      this.model.isScopeSwitching
+    ) {
       return;
     }
     try {
@@ -597,10 +667,13 @@ export class BookmarkSidebar {
     }
   }
 
-  async #restore(node: BookmarkNode): Promise<void> {
+  async #restore(node: BookmarkNode, scope: BookmarkViewScope): Promise<void> {
+    if (!(await this.model.isNodeInScope(node.id, scope))) {
+      return;
+    }
     const folders = await this.model.destinationFolders(node.id);
     const parentId = await chooseDestination(folders, undefined, "restore");
-    if (!parentId) {
+    if (!parentId || !(await this.model.isNodeInScope(node.id, scope))) {
       return;
     }
     try {
@@ -613,10 +686,16 @@ export class BookmarkSidebar {
     }
   }
 
-  async #moveWithDialog(node: BookmarkNode): Promise<void> {
+  async #moveWithDialog(
+    node: BookmarkNode,
+    scope: BookmarkViewScope,
+  ): Promise<void> {
+    if (!(await this.model.isNodeInScope(node.id, scope))) {
+      return;
+    }
     const folders = await this.model.destinationFolders(node.id);
     const parentId = await chooseDestination(folders, node.parentId);
-    if (!parentId) {
+    if (!parentId || !(await this.model.isNodeInScope(node.id, scope))) {
       return;
     }
     try {
@@ -626,13 +705,19 @@ export class BookmarkSidebar {
     }
   }
 
-  async #dropOn(target: BookmarkNode): Promise<void> {
-    if (this.model.scope !== "bookmarks") {
+  async #dropOn(target: BookmarkNode, scope: BookmarkViewScope): Promise<void> {
+    if (
+      scope !== "bookmarks" ||
+      !(await this.model.isNodeInScope(target.id, scope))
+    ) {
       return;
     }
     const draggedId = this.#draggedId;
     this.#draggedId = null;
     if (!draggedId || draggedId === target.id) {
+      return;
+    }
+    if (!(await this.model.isNodeInScope(draggedId, scope))) {
       return;
     }
     const parentId = target.url ? target.parentId : target.id;
@@ -693,9 +778,9 @@ export class BookmarkSidebar {
     ) {
       event.preventDefault();
       if (this.model.scope === "trash") {
-        await this.#deletePermanently(row.node);
+        await this.#deletePermanently(row.node, "trash");
       } else {
-        await this.#delete(row.node);
+        await this.#delete(row.node, "bookmarks");
       }
     }
   }

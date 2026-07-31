@@ -136,7 +136,7 @@ function bindSidebarLayout(): void {
       popover.append(button);
     };
     if (bookmarkSidebar?.hasTrash) {
-      if (bookmarkSidebar.scope === "trash") {
+      if (bookmarkSidebar.targetScope === "trash") {
         addAction(t("bookmarks"), () => {
           void bookmarkSidebar?.setScope("bookmarks");
         });

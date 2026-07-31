@@ -11,12 +11,27 @@ import type {
 } from "../core/types";
 import { BookmarkTreeModel } from "./tree-model";
 
+interface DeferredChildrenRead {
+  entered: Promise<void>;
+  release(): void;
+  reject(error: Error): void;
+}
+
 class FakeBookmarkRepository implements BookmarkRepository {
   readonly nodes = new Map<string, BookmarkNode>();
   readonly children = new Map<string, string[]>();
   readonly listeners = new Set<BookmarkEventListener>();
   readonly childReads: string[] = [];
   readonly removals: Array<{ id: string; recursive: boolean }> = [];
+  readonly deferredChildren = new Map<
+    string,
+    Array<{
+      entered(): void;
+      result: Promise<void>;
+      release(): void;
+      reject(error: Error): void;
+    }>
+  >();
   failNextMove = false;
 
   constructor(mode: "vivaldi" | "chrome" = "vivaldi") {
@@ -116,7 +131,35 @@ class FakeBookmarkRepository implements BookmarkRepository {
 
   async getChildren(parentId: string): Promise<BookmarkNode[]> {
     this.childReads.push(parentId);
-    return this.nodesFor(parentId);
+    const snapshot = this.nodesFor(parentId);
+    const deferred = this.deferredChildren.get(parentId)?.shift();
+    if (deferred) {
+      deferred.entered();
+      await deferred.result;
+    }
+    return snapshot;
+  }
+
+  deferNextChildren(parentId: string): DeferredChildrenRead {
+    let markEntered = (): void => undefined;
+    let release = (): void => undefined;
+    let reject!: (error: Error) => void;
+    const entered = new Promise<void>((resolve) => {
+      markEntered = resolve;
+    });
+    const result = new Promise<void>((resolve, rejectPromise) => {
+      release = resolve;
+      reject = rejectPromise;
+    });
+    const pending = this.deferredChildren.get(parentId) ?? [];
+    pending.push({
+      entered: markEntered,
+      result,
+      release,
+      reject,
+    });
+    this.deferredChildren.set(parentId, pending);
+    return { entered, release, reject };
   }
 
   async getNode(id: string): Promise<BookmarkNode | null> {
@@ -281,6 +324,7 @@ test("bookmark events update the visible root without reloading the tree", async
       url: "https://external.example/",
     },
   });
+  await new Promise((resolve) => setImmediate(resolve));
 
   assert.deepEqual(
     model.rows().map((row) => row.node.id),
@@ -387,11 +431,186 @@ test("external moves into and out of trash update the active scope", async () =>
     oldParentId: "trash",
     oldIndex: 1,
   });
+  await new Promise((resolve) => setImmediate(resolve));
 
   assert.deepEqual(
     model.rows().map((row) => row.node.id),
     ["deleted-folder", "deleted-link"],
   );
+  model.dispose();
+});
+
+test("the latest scope wins when an older scope load finishes late", async () => {
+  const repository = new FakeBookmarkRepository();
+  const model = new BookmarkTreeModel(repository);
+  await model.initialize(new Set(["folder"]));
+  const delayedTrash = repository.deferNextChildren("trash");
+
+  const switchToTrash = model.setScope("trash");
+  await delayedTrash.entered;
+
+  assert.equal(model.scope, "bookmarks");
+  assert.equal(model.targetScope, "trash");
+  assert.equal(model.isScopeSwitching, true);
+  assert.deepEqual(
+    model.rows().map((row) => row.node.id),
+    ["folder", "nested", "link"],
+  );
+
+  const switchBack = model.setScope("bookmarks");
+  delayedTrash.release();
+
+  assert.deepEqual(await Promise.all([switchToTrash, switchBack]), [
+    false,
+    true,
+  ]);
+  assert.equal(model.scope, "bookmarks");
+  assert.equal(model.targetScope, "bookmarks");
+  assert.equal(model.isScopeSwitching, false);
+  assert.equal(model.activeRoot?.id, "bookmarks");
+  assert.equal(model.expandedIds.has("folder"), true);
+  assert.equal(await model.countBookmarks(), 2);
+  assert.deepEqual(
+    model.rows().map((row) => row.node.id),
+    ["folder", "nested", "link"],
+  );
+  assert.equal(await model.isNodeInScope("link", "bookmarks"), true);
+  assert.equal(await model.isNodeInScope("deleted-link", "bookmarks"), false);
+  model.dispose();
+});
+
+test("cancelling a delayed bookmarks load preserves the trash state", async () => {
+  const repository = new FakeBookmarkRepository();
+  const model = new BookmarkTreeModel(repository);
+  await model.initialize(new Set());
+  await model.setScope("trash");
+  await model.toggleFolder("deleted-folder");
+  const delayedBookmarks = repository.deferNextChildren("bookmarks");
+
+  const switchToBookmarks = model.setScope("bookmarks");
+  await delayedBookmarks.entered;
+  const stayInTrash = model.setScope("trash");
+  delayedBookmarks.release();
+
+  assert.deepEqual(await Promise.all([switchToBookmarks, stayInTrash]), [
+    false,
+    true,
+  ]);
+  assert.equal(model.scope, "trash");
+  assert.equal(model.activeRoot?.id, "trash");
+  assert.equal(model.expandedIds.has("deleted-folder"), true);
+  assert.deepEqual(
+    model.rows().map((row) => row.node.id),
+    ["deleted-folder", "deleted-nested", "deleted-link"],
+  );
+  model.dispose();
+});
+
+test("a failed scope load keeps the previous complete tree", async () => {
+  const repository = new FakeBookmarkRepository();
+  const model = new BookmarkTreeModel(repository);
+  await model.initialize(new Set(["folder"]));
+  const failedTrash = repository.deferNextChildren("trash");
+
+  const switching = model.setScope("trash");
+  await failedTrash.entered;
+  failedTrash.reject(new Error("trash unavailable"));
+
+  await assert.rejects(switching, /trash unavailable/);
+  assert.equal(model.scope, "bookmarks");
+  assert.equal(model.targetScope, "bookmarks");
+  assert.equal(model.isScopeSwitching, false);
+  assert.equal(model.activeRoot?.id, "bookmarks");
+  assert.deepEqual(
+    model.rows().map((row) => row.node.id),
+    ["folder", "nested", "link"],
+  );
+  model.dispose();
+});
+
+test("repository events during a scope load are included in its committed state", async () => {
+  const repository = new FakeBookmarkRepository();
+  const model = new BookmarkTreeModel(repository);
+  await model.initialize(new Set());
+  const delayedTrash = repository.deferNextChildren("trash");
+
+  const switching = model.setScope("trash");
+  await delayedTrash.entered;
+  repository.children.set("trash", ["deleted-folder"]);
+  repository.nodes.delete("deleted-link");
+  repository.emit({
+    type: "removed",
+    id: "deleted-link",
+    parentId: "trash",
+    index: 1,
+  });
+  delayedTrash.release();
+
+  assert.equal(await switching, true);
+  assert.deepEqual(
+    model.rows().map((row) => row.node.id),
+    ["deleted-folder"],
+  );
+  assert.equal(repository.childReads.filter((id) => id === "trash").length, 2);
+  model.dispose();
+});
+
+test("a moved event racing a scope load is applied to the rebuilt scope", async () => {
+  const repository = new FakeBookmarkRepository();
+  const model = new BookmarkTreeModel(repository);
+  await model.initialize(new Set());
+  const delayedTrash = repository.deferNextChildren("trash");
+
+  const switching = model.setScope("trash");
+  await delayedTrash.entered;
+  repository.nodes.set("moved-to-trash", {
+    id: "moved-to-trash",
+    parentId: "trash",
+    index: 1,
+    title: "Moved to trash",
+    url: "https://moved.example/",
+  });
+  repository.children.set("trash", [
+    "deleted-folder",
+    "moved-to-trash",
+    "deleted-link",
+  ]);
+  repository.emit({
+    type: "moved",
+    id: "moved-to-trash",
+    parentId: "trash",
+    index: 1,
+    oldParentId: "bookmarks",
+    oldIndex: 0,
+  });
+  delayedTrash.release();
+
+  assert.equal(await switching, true);
+  assert.deepEqual(
+    model.rows().map((row) => row.node.id),
+    ["deleted-folder", "moved-to-trash", "deleted-link"],
+  );
+  model.dispose();
+});
+
+test("a folder load from the previous scope cannot write into the new scope", async () => {
+  const repository = new FakeBookmarkRepository();
+  const model = new BookmarkTreeModel(repository);
+  await model.initialize(new Set());
+  const delayedFolder = repository.deferNextChildren("folder");
+
+  const expanding = model.toggleFolder("folder");
+  await delayedFolder.entered;
+  await model.setScope("trash");
+  delayedFolder.release();
+  await expanding;
+
+  assert.equal(model.scope, "trash");
+  assert.deepEqual(
+    model.rows().map((row) => row.node.id),
+    ["deleted-folder", "deleted-link"],
+  );
+  assert.equal(model.expandedIds.has("folder"), false);
   model.dispose();
 });
 

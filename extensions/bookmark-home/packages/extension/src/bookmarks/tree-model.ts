@@ -10,11 +10,23 @@ import type {
 type TreeListener = () => void;
 export type BookmarkViewScope = "bookmarks" | "trash";
 
+interface BookmarkRoots {
+  bookmarks: BookmarkNode;
+  trash?: BookmarkNode;
+}
+
+interface LoadedScopeState {
+  nodes: Map<string, BookmarkNode>;
+  children: Map<string, string[]>;
+  loadedFolders: Set<string>;
+  rootIds: string[];
+}
+
 export class BookmarkTreeModel {
   readonly #nodes = new Map<string, BookmarkNode>();
   readonly #children = new Map<string, string[]>();
   readonly #loadedFolders = new Set<string>();
-  readonly #loadingFolders = new Set<string>();
+  readonly #loadingFolders = new Map<string, symbol>();
   readonly #expandedByScope: Record<BookmarkViewScope, Set<string>> = {
     bookmarks: new Set(),
     trash: new Set(),
@@ -25,6 +37,11 @@ export class BookmarkTreeModel {
   #trashRoot: BookmarkNode | undefined;
   #rootIds: string[] = [];
   #scope: BookmarkViewScope = "bookmarks";
+  #targetScope: BookmarkViewScope = "bookmarks";
+  #loadGeneration = 0;
+  #loadingGeneration: number | null = null;
+  #repositoryRevision = 0;
+  #repositoryEvents: Promise<void> = Promise.resolve();
   #unsubscribeRepository: (() => void) | null = null;
   #importing = false;
 
@@ -36,11 +53,10 @@ export class BookmarkTreeModel {
     this.#expandedByScope.bookmarks.clear();
     savedExpanded.forEach((id) => this.#expandedByScope.bookmarks.add(id));
     this.#expandedByScope.trash.clear();
-    await this.#reloadRoots();
-    if (this.#bookmarksRoot) {
-      this.#expandedByScope.bookmarks.delete(this.#bookmarksRoot.id);
-    }
-    await this.#loadScope();
+    const roots = await this.#loadRoots();
+    this.#expandedByScope.bookmarks.delete(roots.bookmarks.id);
+    const state = await this.#buildScope("bookmarks", roots);
+    this.#commitScope("bookmarks", roots, state);
     this.#unsubscribeRepository = this.#repository.subscribe(
       this.#handleRepositoryEvent,
     );
@@ -60,6 +76,14 @@ export class BookmarkTreeModel {
 
   get scope(): BookmarkViewScope {
     return this.#scope;
+  }
+
+  get targetScope(): BookmarkViewScope {
+    return this.#targetScope;
+  }
+
+  get isScopeSwitching(): boolean {
+    return this.#loadingGeneration === this.#loadGeneration;
   }
 
   get hasTrash(): boolean {
@@ -109,16 +133,88 @@ export class BookmarkTreeModel {
   }
 
   async setScope(scope: BookmarkViewScope): Promise<boolean> {
-    if (scope === this.#scope) {
-      return true;
-    }
     if (scope === "trash" && !this.#trashRoot) {
       return false;
     }
-    this.#scope = scope;
-    await this.#loadScope();
-    this.#emit();
-    return true;
+    return this.#replaceScope(scope);
+  }
+
+  async #replaceScope(
+    requestedScope: BookmarkViewScope,
+    options: { force?: boolean; reloadRoots?: boolean } = {},
+  ): Promise<boolean> {
+    const generation = ++this.#loadGeneration;
+    this.#targetScope = requestedScope;
+    if (!options.force && requestedScope === this.#scope) {
+      this.#loadingGeneration = null;
+      return true;
+    }
+    this.#loadingGeneration = generation;
+    try {
+      const roots = options.reloadRoots
+        ? await this.#loadRoots()
+        : this.#currentRoots();
+      const scope =
+        requestedScope === "trash" && !roots.trash
+          ? "bookmarks"
+          : requestedScope;
+      const state = await this.#buildLatestScope(scope, roots, generation);
+      if (!state || generation !== this.#loadGeneration) {
+        return false;
+      }
+      this.#commitScope(scope, roots, state);
+      this.#loadingGeneration = null;
+      this.#emit();
+      return true;
+    } catch (error) {
+      if (generation === this.#loadGeneration) {
+        this.#targetScope = this.#scope;
+        this.#loadingGeneration = null;
+        this.#emit();
+      }
+      throw error;
+    }
+  }
+
+  async isNodeInScope(id: string, scope: BookmarkViewScope): Promise<boolean> {
+    if (
+      scope !== this.#scope ||
+      this.isScopeSwitching ||
+      this.#targetScope !== scope
+    ) {
+      return false;
+    }
+    const generation = this.#loadGeneration;
+    const root = this.#rootFor(scope, this.#currentRoots());
+    if (!root) {
+      return false;
+    }
+    let currentId = id;
+    const visited = new Set<string>();
+    while (!visited.has(currentId)) {
+      visited.add(currentId);
+      let node: BookmarkNode | null;
+      try {
+        node = await this.#repository.getNode(currentId);
+      } catch {
+        return false;
+      }
+      if (
+        generation !== this.#loadGeneration ||
+        scope !== this.#scope ||
+        this.isScopeSwitching
+      ) {
+        return false;
+      }
+      if (!node?.parentId) {
+        return false;
+      }
+      if (node.parentId === root.id) {
+        return true;
+      }
+      currentId = node.parentId;
+    }
+    return false;
   }
 
   async search(query: string): Promise<TreeRow[]> {
@@ -203,15 +299,26 @@ export class BookmarkTreeModel {
     ) {
       return;
     }
-    this.#loadingFolders.add(id);
+    const generation = this.#loadGeneration;
+    const request = Symbol(id);
+    this.#loadingFolders.set(id, request);
     this.#emit();
     try {
       const children = await this.#repository.getChildren(id);
+      if (
+        generation !== this.#loadGeneration ||
+        this.#loadingFolders.get(id) !== request ||
+        !this.#nodes.has(id)
+      ) {
+        return;
+      }
       this.#replaceChildren(id, children);
       this.#loadedFolders.add(id);
     } finally {
-      this.#loadingFolders.delete(id);
-      this.#emit();
+      if (this.#loadingFolders.get(id) === request) {
+        this.#loadingFolders.delete(id);
+        this.#emit();
+      }
     }
   }
 
@@ -252,8 +359,7 @@ export class BookmarkTreeModel {
       }
     } finally {
       if (this.#scope === "trash") {
-        await this.#loadScope();
-        this.#emit();
+        await this.#reloadVisible(false);
       }
     }
   }
@@ -307,7 +413,11 @@ export class BookmarkTreeModel {
   }
 
   readonly #handleRepositoryEvent = (event: BookmarkEvent): void => {
-    void this.#applyRepositoryEvent(event);
+    this.#repositoryRevision += 1;
+    const applying = this.#repositoryEvents.then(() =>
+      this.#applyRepositoryEvent(event),
+    );
+    this.#repositoryEvents = applying.catch(() => undefined);
   };
 
   async #applyRepositoryEvent(event: BookmarkEvent): Promise<void> {
@@ -360,13 +470,13 @@ export class BookmarkTreeModel {
     this.#emit();
   }
 
-  async #reloadRoots(): Promise<void> {
+  async #loadRoots(): Promise<BookmarkRoots> {
     const roots = (await this.#repository.getRootChildren()).filter(
       (node) => !node.url,
     );
-    this.#trashRoot = roots.find((node) => node.trash === true);
-    const visible = roots.filter((node) => node !== this.#trashRoot);
-    this.#bookmarksRoot =
+    const trash = roots.find((node) => node.trash === true);
+    const visible = roots.filter((node) => node !== trash);
+    const bookmarks =
       visible.find(
         (node) =>
           node.folderType === undefined && node.unmodifiable === undefined,
@@ -377,55 +487,116 @@ export class BookmarkTreeModel {
           node.folderType !== "other" &&
           node.folderType !== "mobile" &&
           node.folderType !== "managed",
-      ) ??
-      null;
-    if (!this.#bookmarksRoot) {
+      );
+    if (!bookmarks) {
       throw new Error("Bookmark root is missing");
     }
+    return {
+      bookmarks,
+      ...(trash === undefined ? {} : { trash }),
+    };
   }
 
-  async #loadScope(): Promise<void> {
-    this.#nodes.clear();
-    this.#children.clear();
-    this.#loadedFolders.clear();
-    this.#loadingFolders.clear();
-    this.#rootIds = [];
-    if (!this.#bookmarksRoot) {
-      return;
+  async #buildScope(
+    scope: BookmarkViewScope,
+    roots: BookmarkRoots,
+  ): Promise<LoadedScopeState> {
+    const nodes = new Map<string, BookmarkNode>();
+    const children = new Map<string, string[]>();
+    const loadedFolders = new Set<string>();
+    nodes.set(roots.bookmarks.id, roots.bookmarks);
+    if (roots.trash) {
+      nodes.set(roots.trash.id, roots.trash);
     }
-    this.#nodes.set(this.#bookmarksRoot.id, this.#bookmarksRoot);
-    if (this.#trashRoot) {
-      this.#nodes.set(this.#trashRoot.id, this.#trashRoot);
-    }
-    const root = this.#activeRoot();
+    const root = this.#rootFor(scope, roots);
     if (!root) {
-      return;
+      throw new Error("Bookmark scope root is missing");
     }
-    await this.ensureChildrenLoaded(root.id);
-    this.#rootIds = [...(this.#children.get(root.id) ?? [])];
-    await this.#loadExpandedFolders();
-  }
-
-  async #loadExpandedFolders(): Promise<void> {
-    let pending = [...this.#expanded()];
+    const loadChildren = async (parentId: string): Promise<void> => {
+      const childNodes = await this.#repository.getChildren(parentId);
+      children.set(
+        parentId,
+        childNodes.map((node) => node.id),
+      );
+      childNodes.forEach((node) => nodes.set(node.id, node));
+      loadedFolders.add(parentId);
+    };
+    await loadChildren(root.id);
+    const rootIds = [...(children.get(root.id) ?? [])];
+    let pending = [...this.#expandedByScope[scope]];
     while (pending.length > 0) {
-      const loadable = pending.filter((id) => this.#nodes.has(id));
+      const loadable = pending.filter(
+        (id) => nodes.has(id) && !loadedFolders.has(id),
+      );
       if (loadable.length === 0) {
         break;
       }
-      await Promise.all(loadable.map((id) => this.ensureChildrenLoaded(id)));
+      await Promise.all(loadable.map(loadChildren));
       const loaded = new Set(loadable);
       pending = pending.filter((id) => !loaded.has(id));
     }
+    return { nodes, children, loadedFolders, rootIds };
   }
 
-  async #reloadVisible(): Promise<void> {
-    await this.#reloadRoots();
-    if (this.#scope === "trash" && !this.#trashRoot) {
-      this.#scope = "bookmarks";
+  async #buildLatestScope(
+    scope: BookmarkViewScope,
+    roots: BookmarkRoots,
+    generation: number,
+  ): Promise<LoadedScopeState | undefined> {
+    while (generation === this.#loadGeneration) {
+      const revision = this.#repositoryRevision;
+      const state = await this.#buildScope(scope, roots);
+      if (generation !== this.#loadGeneration) {
+        return undefined;
+      }
+      if (revision === this.#repositoryRevision) {
+        return state;
+      }
     }
-    await this.#loadScope();
-    this.#emit();
+    return undefined;
+  }
+
+  async #reloadVisible(reloadRoots = true): Promise<void> {
+    await this.#replaceScope(this.#targetScope, {
+      force: true,
+      reloadRoots,
+    });
+  }
+
+  #commitScope(
+    scope: BookmarkViewScope,
+    roots: BookmarkRoots,
+    state: LoadedScopeState,
+  ): void {
+    this.#bookmarksRoot = roots.bookmarks;
+    this.#trashRoot = roots.trash;
+    this.#nodes.clear();
+    state.nodes.forEach((node, id) => this.#nodes.set(id, node));
+    this.#children.clear();
+    state.children.forEach((ids, id) => this.#children.set(id, ids));
+    this.#loadedFolders.clear();
+    state.loadedFolders.forEach((id) => this.#loadedFolders.add(id));
+    this.#loadingFolders.clear();
+    this.#rootIds = state.rootIds;
+    this.#scope = scope;
+    this.#targetScope = scope;
+  }
+
+  #currentRoots(): BookmarkRoots {
+    if (!this.#bookmarksRoot) {
+      throw new Error("Bookmark root is missing");
+    }
+    return {
+      bookmarks: this.#bookmarksRoot,
+      ...(this.#trashRoot === undefined ? {} : { trash: this.#trashRoot }),
+    };
+  }
+
+  #rootFor(
+    scope: BookmarkViewScope,
+    roots: BookmarkRoots,
+  ): BookmarkNode | undefined {
+    return scope === "trash" ? roots.trash : roots.bookmarks;
   }
 
   #activeRoot(): BookmarkNode | undefined {
