@@ -975,6 +975,150 @@ try {
   await ordinaryPage.close();
   record("no ordinary-page injection");
 
+  await page.addInitScript(() => {
+    const bookmarks = chrome.bookmarks;
+    const getTree = bookmarks.getTree.bind(bookmarks);
+    const getChildren = bookmarks.getChildren.bind(bookmarks);
+    const getNode = bookmarks.get.bind(bookmarks);
+    const getSubTree = bookmarks.getSubTree.bind(bookmarks);
+    const trashRoot = {
+      id: "issue4-trash",
+      parentId: "0",
+      index: 99,
+      title: "Trash",
+      trash: true,
+    };
+    const deletedNodes = [
+      {
+        id: "issue4-deleted-folder",
+        parentId: trashRoot.id,
+        index: 0,
+        title: "Delayed deleted folder",
+      },
+      {
+        id: "issue4-deleted-link",
+        parentId: trashRoot.id,
+        index: 1,
+        title: "Delayed deleted bookmark",
+        url: "https://example.com/issue4-deleted",
+      },
+    ];
+    let trashReadStarted = false;
+    let releaseTrash = () => undefined;
+    const trashGate = new Promise((resolve) => {
+      releaseTrash = resolve;
+    });
+    const clone = (value) => globalThis.structuredClone(value);
+
+    Object.defineProperties(bookmarks, {
+      getTree: {
+        configurable: true,
+        value: async () => {
+          const tree = clone(await getTree());
+          const root = tree[0];
+          if (root) {
+            trashRoot.parentId = root.id;
+            root.children = [...(root.children ?? []), clone(trashRoot)];
+          }
+          return tree;
+        },
+      },
+      getChildren: {
+        configurable: true,
+        value: async (parentId) => {
+          if (parentId !== trashRoot.id) {
+            return getChildren(parentId);
+          }
+          trashReadStarted = true;
+          const snapshot = clone(deletedNodes);
+          await trashGate;
+          return snapshot;
+        },
+      },
+      get: {
+        configurable: true,
+        value: async (ids) => {
+          const requested = Array.isArray(ids) ? ids : [ids];
+          const fakeNodes = [trashRoot, ...deletedNodes].filter((node) =>
+            requested.includes(node.id),
+          );
+          const realIds = requested.filter(
+            (id) => !fakeNodes.some((node) => node.id === id),
+          );
+          return [
+            ...clone(fakeNodes),
+            ...(realIds.length === 0 ? [] : await getNode(realIds)),
+          ];
+        },
+      },
+      getSubTree: {
+        configurable: true,
+        value: async (id) =>
+          id === trashRoot.id
+            ? [{ ...clone(trashRoot), children: clone(deletedNodes) }]
+            : getSubTree(id),
+      },
+    });
+    globalThis.__issue4Race = {
+      get trashReadStarted() {
+        return trashReadStarted;
+      },
+      releaseTrash,
+    };
+  });
+  await page.reload();
+  await page.waitForSelector("#app");
+  if (await page.locator("body.sidebar-collapsed").count()) {
+    await page.locator("#open-sidebar").click();
+    await page.locator("body.sidebar-collapsed").waitFor({ state: "detached" });
+  }
+  const initialHeader = await page.evaluate(() => ({
+    count: globalThis.document.querySelector("#bookmark-count")?.textContent,
+    rowIds: [...globalThis.document.querySelectorAll(".tree-row")].map(
+      (row) => row.dataset.id,
+    ),
+  }));
+  await page.locator("#sidebar-menu").click();
+  await page
+    .locator(".sidebar-popover")
+    .getByText("Trash", { exact: true })
+    .click();
+  await page.waitForFunction(
+    () => globalThis.__issue4Race?.trashReadStarted === true,
+  );
+  await page.locator("#sidebar-menu").click();
+  await page
+    .locator(".sidebar-popover")
+    .getByText("Bookmarks", { exact: true })
+    .click();
+  await page.evaluate(() => globalThis.__issue4Race.releaseTrash());
+  await page.waitForFunction(({ count, rowIds }) => {
+    const currentRows = [...globalThis.document.querySelectorAll(".tree-row")];
+    return (
+      globalThis.document.querySelector(".sidebar-title > span")
+        ?.textContent === "Bookmarks" &&
+      globalThis.document.querySelector("#bookmark-count")?.textContent ===
+        count &&
+      currentRows.every((row) => row.dataset.scope === "bookmarks") &&
+      currentRows.map((row) => row.dataset.id).join(",") === rowIds.join(",")
+    );
+  }, initialHeader);
+  const firstBookmarkRow = page.locator(".tree-row").first();
+  await firstBookmarkRow.click({ button: "right" });
+  await page.locator(".tree-popover").waitFor();
+  assert.equal(
+    await page
+      .locator('.tree-popover button[data-action="permanently-delete"]')
+      .count(),
+    0,
+  );
+  assert.equal(
+    await page.locator('.tree-popover button[data-action="delete"]').count(),
+    1,
+  );
+  await page.locator("#home").click({ position: { x: 20, y: 20 } });
+  record("rapid scope cancellation preserves bookmark rows and menu semantics");
+
   await page.evaluate(
     async (ids) => {
       for (const id of ids) {

@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-07-30T10:43:09.903Z",
-  "completedAt": "2026-07-30T10:43:16.858Z",
+  "startedAt": "2026-07-31T02:40:08.302Z",
+  "completedAt": "2026-07-31T02:40:15.901Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
@@ -25,6 +25,7 @@
     "narrow internal bookmark drawer",
     "sidebar preference persistence",
     "no ordinary-page injection",
+    "rapid scope cancellation preserves bookmark rows and menu semantics",
     "search navigation"
   ],
   "screenshots": [
@@ -33,5 +34,5 @@
     "screenshots/bookmark-home-settings.png",
     "screenshots/bookmark-home-narrow.png"
   ],
-  "passed": 24
+  "passed": 25
 }

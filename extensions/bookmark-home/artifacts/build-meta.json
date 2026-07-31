@@ -65,7 +65,7 @@
       "format": "esm"
     },
     "src/core/i18n.ts": {
-      "bytes": 6865,
+      "bytes": 6987,
       "imports": [],
       "format": "esm"
     },
@@ -81,12 +81,12 @@
       "format": "esm"
     },
     "src/bookmarks/tree-model.ts": {
-      "bytes": 14526,
+      "bytes": 19585,
       "imports": [],
       "format": "esm"
     },
     "src/bookmarks/sidebar.ts": {
-      "bytes": 21125,
+      "bytes": 23425,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -175,7 +175,7 @@
       "format": "esm"
     },
     "src/main.ts": {
-      "bytes": 8879,
+      "bytes": 8885,
       "imports": [
         {
           "path": "src/styles.css",
@@ -230,11 +230,11 @@
     "dist/main.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-G73PBDPY.js",
+          "path": "dist/chunks/chunk-M75NLNXE.js",
           "kind": "import-statement"
         },
         {
-          "path": "dist/chunks/card-CPUOBMEM.js",
+          "path": "dist/chunks/card-RYLPKMS7.js",
           "kind": "dynamic-import"
         }
       ],
@@ -252,10 +252,10 @@
           "bytesInOutput": 4352
         },
         "src/bookmarks/tree-model.ts": {
-          "bytesInOutput": 6048
+          "bytesInOutput": 7662
         },
         "src/bookmarks/sidebar.ts": {
-          "bytesInOutput": 9879
+          "bytesInOutput": 10854
         },
         "src/core/settings.ts": {
           "bytesInOutput": 3916
@@ -270,15 +270,15 @@
           "bytesInOutput": 1783
         },
         "src/main.ts": {
-          "bytesInOutput": 4357
+          "bytesInOutput": 4363
         }
       },
-      "bytes": 36650
+      "bytes": 39245
     },
-    "dist/chunks/card-CPUOBMEM.js": {
+    "dist/chunks/card-RYLPKMS7.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-G73PBDPY.js",
+          "path": "dist/chunks/chunk-M75NLNXE.js",
           "kind": "import-statement"
         }
       ],
@@ -296,7 +296,7 @@
       },
       "bytes": 8413
     },
-    "dist/chunks/chunk-G73PBDPY.js": {
+    "dist/chunks/chunk-M75NLNXE.js": {
       "imports": [],
       "exports": [
         "a",
@@ -309,13 +309,13 @@
       ],
       "inputs": {
         "src/core/i18n.ts": {
-          "bytesInOutput": 6392
+          "bytesInOutput": 6529
         },
         "src/search/providers.ts": {
           "bytesInOutput": 2424
         }
       },
-      "bytes": 8874
+      "bytes": 9011
     },
     "dist/assets/folder-XLK4K2E4.svg": {
       "imports": [],
