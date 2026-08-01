@@ -104,6 +104,10 @@ export class BookmarkTreeModel {
     return root ? { ...root } : undefined;
   }
 
+  get bookmarksRoot(): BookmarkNode | undefined {
+    return this.#bookmarksRoot ? { ...this.#bookmarksRoot } : undefined;
+  }
+
   getNode(id: string): BookmarkNode | undefined {
     const node = this.#nodes.get(id);
     return node ? { ...node } : undefined;

@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-07-31T02:40:08.302Z",
-  "completedAt": "2026-07-31T02:40:15.901Z",
+  "startedAt": "2026-08-01T11:56:42.968Z",
+  "completedAt": "2026-08-01T11:56:50.752Z",
   "checks": [
     "native new-tab override",
     "minimal manifest surface",
@@ -13,6 +13,7 @@
     "move bookmark with keyboard-accessible dialog",
     "confirmed bookmark deletion",
     "live bookmark synchronization without a shortcut grid",
+    "agent organizer stages, reviews, and applies approved bookmark changes",
     "bookmark, history, and online search suggestions",
     "anchored settings card opens from both entry points",
     "context menu flips above bottom rows and closes on scroll",
@@ -32,7 +33,8 @@
     "screenshots/bookmark-home-light.png",
     "screenshots/bookmark-home-dark.png",
     "screenshots/bookmark-home-settings.png",
+    "screenshots/bookmark-home-organizer.png",
     "screenshots/bookmark-home-narrow.png"
   ],
-  "passed": 25
+  "passed": 26
 }

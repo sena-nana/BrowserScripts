@@ -207,6 +207,20 @@ export async function confirmEmptyTrash(): Promise<boolean> {
   });
 }
 
+export async function confirmOrganizerDeletes(
+  deleteCount: number,
+  descendantCount: number,
+): Promise<boolean> {
+  return confirmDestructiveAction({
+    heading: t("organizerConfirmAll"),
+    copy: t("organizerConfirmDeletes", {
+      count: String(deleteCount),
+      descendants: String(descendantCount),
+    }),
+    action: t("organizerApproveAll"),
+  });
+}
+
 function confirmDestructiveAction(options: {
   heading: string;
   copy: string;

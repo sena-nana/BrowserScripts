@@ -25,7 +25,7 @@
       "imports": []
     },
     "src/styles.css": {
-      "bytes": 19723,
+      "bytes": 24147,
       "imports": [
         {
           "path": "src/assets/folder.svg",
@@ -65,12 +65,12 @@
       "format": "esm"
     },
     "src/core/i18n.ts": {
-      "bytes": 6987,
+      "bytes": 10448,
       "imports": [],
       "format": "esm"
     },
     "src/ui/dialogs.ts": {
-      "bytes": 8816,
+      "bytes": 9184,
       "imports": [
         {
           "path": "src/core/i18n.ts",
@@ -81,7 +81,7 @@
       "format": "esm"
     },
     "src/bookmarks/tree-model.ts": {
-      "bytes": 19585,
+      "bytes": 19713,
       "imports": [],
       "format": "esm"
     },
@@ -174,8 +174,70 @@
       ],
       "format": "esm"
     },
+    "src/organizer/snapshot.ts": {
+      "bytes": 3321,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/organizer/executor.ts": {
+      "bytes": 4703,
+      "imports": [
+        {
+          "path": "src/organizer/snapshot.ts",
+          "kind": "import-statement",
+          "original": "./snapshot"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/organizer/responses-client.ts": {
+      "bytes": 11847,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/organizer/settings.ts": {
+      "bytes": 2274,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/organizer/panel.ts": {
+      "bytes": 14557,
+      "imports": [
+        {
+          "path": "src/core/i18n.ts",
+          "kind": "import-statement",
+          "original": "../core/i18n"
+        },
+        {
+          "path": "src/ui/dialogs.ts",
+          "kind": "import-statement",
+          "original": "../ui/dialogs"
+        },
+        {
+          "path": "src/organizer/executor.ts",
+          "kind": "import-statement",
+          "original": "./executor"
+        },
+        {
+          "path": "src/organizer/responses-client.ts",
+          "kind": "import-statement",
+          "original": "./responses-client"
+        },
+        {
+          "path": "src/organizer/settings.ts",
+          "kind": "import-statement",
+          "original": "./settings"
+        },
+        {
+          "path": "src/organizer/snapshot.ts",
+          "kind": "import-statement",
+          "original": "./snapshot"
+        }
+      ],
+      "format": "esm"
+    },
     "src/main.ts": {
-      "bytes": 8885,
+      "bytes": 9676,
       "imports": [
         {
           "path": "src/styles.css",
@@ -221,6 +283,11 @@
           "path": "src/settings/card.ts",
           "kind": "dynamic-import",
           "original": "./settings/card"
+        },
+        {
+          "path": "src/organizer/panel.ts",
+          "kind": "dynamic-import",
+          "original": "./organizer/panel"
         }
       ],
       "format": "esm"
@@ -230,11 +297,23 @@
     "dist/main.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-M75NLNXE.js",
+          "path": "dist/chunks/chunk-2Z5R5A4F.js",
           "kind": "import-statement"
         },
         {
-          "path": "dist/chunks/card-RYLPKMS7.js",
+          "path": "dist/chunks/chunk-JPFDAGZC.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "dist/chunks/chunk-E43AUDWC.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "dist/chunks/card-R4IYM2UN.js",
+          "kind": "dynamic-import"
+        },
+        {
+          "path": "dist/chunks/panel-ZIFI4BRJ.js",
           "kind": "dynamic-import"
         }
       ],
@@ -246,39 +325,40 @@
           "bytesInOutput": 0
         },
         "src/bookmarks/chrome-repository.ts": {
-          "bytesInOutput": 2589
-        },
-        "src/ui/dialogs.ts": {
-          "bytesInOutput": 4352
+          "bytesInOutput": 2586
         },
         "src/bookmarks/tree-model.ts": {
-          "bytesInOutput": 7662
+          "bytesInOutput": 7717
         },
         "src/bookmarks/sidebar.ts": {
-          "bytesInOutput": 10854
+          "bytesInOutput": 10848
         },
         "src/core/settings.ts": {
-          "bytesInOutput": 3916
+          "bytesInOutput": 3910
         },
         "src/home/controller.ts": {
           "bytesInOutput": 289
         },
         "src/search/controller.ts": {
-          "bytesInOutput": 3359
+          "bytesInOutput": 3358
         },
         "src/search/suggestion-engine.ts": {
-          "bytesInOutput": 1783
+          "bytesInOutput": 1782
         },
         "src/main.ts": {
-          "bytesInOutput": 4363
+          "bytesInOutput": 4792
         }
       },
-      "bytes": 39245
+      "bytes": 35473
     },
-    "dist/chunks/card-RYLPKMS7.js": {
+    "dist/chunks/card-R4IYM2UN.js": {
       "imports": [
         {
-          "path": "dist/chunks/chunk-M75NLNXE.js",
+          "path": "dist/chunks/chunk-2Z5R5A4F.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "dist/chunks/chunk-E43AUDWC.js",
           "kind": "import-statement"
         }
       ],
@@ -294,28 +374,92 @@
           "bytesInOutput": 7258
         }
       },
-      "bytes": 8413
+      "bytes": 8446
     },
-    "dist/chunks/chunk-M75NLNXE.js": {
+    "dist/chunks/chunk-2Z5R5A4F.js": {
       "imports": [],
       "exports": [
         "a",
         "b",
         "c",
         "d",
-        "e",
-        "f",
-        "g"
+        "e"
       ],
       "inputs": {
-        "src/core/i18n.ts": {
-          "bytesInOutput": 6529
-        },
         "src/search/providers.ts": {
           "bytesInOutput": 2424
         }
       },
-      "bytes": 9011
+      "bytes": 2468
+    },
+    "dist/chunks/panel-ZIFI4BRJ.js": {
+      "imports": [
+        {
+          "path": "dist/chunks/chunk-JPFDAGZC.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "dist/chunks/chunk-E43AUDWC.js",
+          "kind": "import-statement"
+        }
+      ],
+      "exports": [
+        "openOrganizerPanel"
+      ],
+      "entryPoint": "src/organizer/panel.ts",
+      "inputs": {
+        "src/organizer/snapshot.ts": {
+          "bytesInOutput": 1446
+        },
+        "src/organizer/executor.ts": {
+          "bytesInOutput": 1657
+        },
+        "src/organizer/responses-client.ts": {
+          "bytesInOutput": 6082
+        },
+        "src/organizer/settings.ts": {
+          "bytesInOutput": 1006
+        },
+        "src/organizer/panel.ts": {
+          "bytesInOutput": 7296
+        }
+      },
+      "bytes": 17597
+    },
+    "dist/chunks/chunk-JPFDAGZC.js": {
+      "imports": [
+        {
+          "path": "dist/chunks/chunk-E43AUDWC.js",
+          "kind": "import-statement"
+        }
+      ],
+      "exports": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f"
+      ],
+      "inputs": {
+        "src/ui/dialogs.ts": {
+          "bytesInOutput": 4518
+        }
+      },
+      "bytes": 4609
+    },
+    "dist/chunks/chunk-E43AUDWC.js": {
+      "imports": [],
+      "exports": [
+        "a",
+        "b"
+      ],
+      "inputs": {
+        "src/core/i18n.ts": {
+          "bytesInOutput": 10237
+        }
+      },
+      "bytes": 10260
     },
     "dist/assets/folder-XLK4K2E4.svg": {
       "imports": [],
@@ -406,10 +550,10 @@
       ],
       "inputs": {
         "src/styles.css": {
-          "bytesInOutput": 16292
+          "bytesInOutput": 19973
         }
       },
-      "bytes": 16293
+      "bytes": 19974
     }
   }
 }
