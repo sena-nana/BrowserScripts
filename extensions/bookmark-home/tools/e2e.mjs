@@ -106,6 +106,11 @@ try {
   assert.equal(manifest.content_scripts, undefined);
   assert.equal(manifest.side_panel, undefined);
   assert.equal(manifest.permissions.includes("topSites"), false);
+  assert.deepEqual(manifest.optional_host_permissions, [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+  ]);
   record("minimal manifest surface");
 
   const layout = await page.evaluate(() => {
@@ -334,7 +339,12 @@ try {
       title: "Popular Bookmark E2E",
       url: "https://example.com/popular-e2e",
     });
-    return [first.id, second.id];
+    const third = await chrome.bookmarks.create({
+      parentId,
+      title: "Delete Bookmark E2E",
+      url: "https://example.com/delete-e2e?private=secret#token",
+    });
+    return [first.id, second.id, third.id];
   }, bookmarkBarId);
   await page.getByText("Codex Bookmark E2E", { exact: true }).waitFor();
   await page.getByText("Popular Bookmark E2E", { exact: true }).waitFor();
@@ -351,6 +361,124 @@ try {
   assert.equal(sameLevelIconOffsets[0], sameLevelIconOffsets[1]);
   assert.equal(await page.locator("#quick-links").count(), 0);
   record("live bookmark synchronization without a shortcut grid");
+
+  let organizerRound = 0;
+  let organizerRequestBody;
+  await context.route("**/v1/responses", async (route) => {
+    organizerRound += 1;
+    organizerRequestBody ??= route.request().postDataJSON();
+    const output =
+      organizerRound === 1
+        ? [
+            {
+              type: "function_call",
+              call_id: "rename-e2e",
+              name: "rename_bookmark",
+              arguments: JSON.stringify({
+                target_id: externalIds[0],
+                new_title: "Rejected Rename E2E",
+                reason: "Exercise individual rejection",
+              }),
+            },
+            {
+              type: "function_call",
+              call_id: "move-e2e",
+              name: "move_bookmark",
+              arguments: JSON.stringify({
+                target_id: externalIds[1],
+                destination_folder_id: folderId,
+                reason: "Exercise individual approval",
+              }),
+            },
+            {
+              type: "function_call",
+              call_id: "delete-e2e",
+              name: "delete_bookmark",
+              arguments: JSON.stringify({
+                target_id: externalIds[2],
+                reason: "Exercise bulk approval",
+              }),
+            },
+          ]
+        : [
+            {
+              type: "function_call",
+              call_id: "finish-e2e",
+              name: "finish_organization",
+              arguments: JSON.stringify({ summary: "E2E organizer plan" }),
+            },
+          ];
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ output }),
+    });
+  });
+  await page.locator("#open-organizer").click();
+  await page.locator(".organizer-panel").waitFor();
+  await page.locator(".organizer-connection summary").click();
+  await page
+    .locator('.organizer-connection input[type="url"]')
+    .fill("https://api.bing.com/v1/responses");
+  await page
+    .locator('.organizer-connection input[type="password"]')
+    .fill("e2e-key");
+  await page
+    .locator(".organizer-setup textarea")
+    .fill("Organize the E2E bookmarks");
+  await page.locator(".organizer-setup .button.primary").click();
+  await page.getByText("Review changes", { exact: true }).waitFor();
+  await page.screenshot({
+    path: path.join(screenshotsPath, "bookmark-home-organizer.png"),
+  });
+  assert.equal(organizerRound, 2);
+  assert.equal(organizerRequestBody.store, false);
+  assert.doesNotMatch(
+    JSON.stringify(organizerRequestBody),
+    /private=secret|#token/,
+  );
+  const beforeApproval = await page.evaluate(async (ids) => {
+    const [rename, move, remove] = await Promise.all(
+      ids.map(async (id) => (await chrome.bookmarks.get(id))[0]),
+    );
+    return {
+      rename: rename?.title,
+      move: move?.parentId,
+      remove: Boolean(remove),
+    };
+  }, externalIds);
+  assert.deepEqual(beforeApproval, {
+    rename: "Codex Bookmark E2E",
+    move: bookmarkBarId,
+    remove: true,
+  });
+  const proposals = page.locator(".organizer-proposal");
+  await proposals.nth(0).getByText("Reject", { exact: true }).click();
+  await proposals.nth(1).getByText("Approve", { exact: true }).click();
+  await proposals.nth(1).getByText("Applied", { exact: true }).waitFor();
+  await page.getByText("Approve all", { exact: true }).click();
+  await page.locator(".modal .button.danger").click();
+  await proposals.nth(2).getByText("Applied", { exact: true }).waitFor();
+  const afterApproval = await page.evaluate(async (ids) => {
+    const [rename] = await chrome.bookmarks.get(ids[0]);
+    const [move] = await chrome.bookmarks.get(ids[1]);
+    const removed = await (async () => {
+      try {
+        return (await chrome.bookmarks.get(ids[2])).length === 0;
+      } catch {
+        return true;
+      }
+    })();
+    return { rename: rename?.title, move: move?.parentId, removed };
+  }, externalIds);
+  assert.deepEqual(afterApproval, {
+    rename: "Codex Bookmark E2E",
+    move: folderId,
+    removed: true,
+  });
+  await page.locator(".organizer-close").click();
+  record(
+    "agent organizer stages, reviews, and applies approved bookmark changes",
+  );
 
   await page.evaluate(() => {
     chrome.history.search = async () => [
@@ -1173,6 +1301,7 @@ await writeFile(
         "screenshots/bookmark-home-light.png",
         "screenshots/bookmark-home-dark.png",
         "screenshots/bookmark-home-settings.png",
+        "screenshots/bookmark-home-organizer.png",
         "screenshots/bookmark-home-narrow.png",
       ],
       passed: checks.length,

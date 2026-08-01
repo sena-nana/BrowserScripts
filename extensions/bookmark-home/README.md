@@ -26,6 +26,13 @@ enabled.
 - `favicon` displays browser-managed favicons.
 - Exact Google, Bing, and Baidu hosts are used only after the user types in the
   central search field and online suggestions are enabled.
+- The optional bookmark organizer sends only the selected bookmark names,
+  folder structure, and URLs without credentials, queries, or fragments to the
+  user-configured Responses-compatible endpoint. It never changes bookmarks
+  until the user reviews and approves each proposed action.
+- Organizer credentials stay in extension-local storage and are never synced.
+  Access to a configured endpoint is requested only when the user starts an
+  organizer run.
 
 The extension has no content script, background worker, browser side panel, or
 access to arbitrary websites. Search input and suggestion results are not

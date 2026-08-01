@@ -74,6 +74,7 @@ function revealInitialAppearance(): void {
 }
 
 function openSettings(trigger: HTMLElement): void {
+  document.querySelector<HTMLButtonElement>(".organizer-close")?.click();
   const existing = document.querySelector<HTMLElement>(".settings-card");
   if (existing) {
     existing.querySelector<HTMLButtonElement>(".settings-close")?.click();
@@ -254,6 +255,30 @@ async function run(): Promise<void> {
   const settingsButton = requiredElement<HTMLButtonElement>("#open-settings");
   settingsButton.addEventListener("click", () => {
     openSettings(settingsButton);
+  });
+
+  const organizerButton = requiredElement<HTMLButtonElement>("#open-organizer");
+  organizerButton.addEventListener("click", () => {
+    document.querySelector<HTMLButtonElement>(".settings-close")?.click();
+    const existing =
+      document.querySelector<HTMLButtonElement>(".organizer-close");
+    if (existing) {
+      existing.click();
+      return;
+    }
+    const rootId = bookmarkSidebar?.model.bookmarksRoot?.id;
+    if (!rootId) {
+      showToast(t("unableToLoadBookmarks"));
+      return;
+    }
+    void import("./organizer/panel").then(({ openOrganizerPanel }) =>
+      openOrganizerPanel({
+        repository,
+        rootId,
+        trigger: organizerButton,
+        showToast,
+      }),
+    );
   });
 
   performance.mark("bookmark-home:ready");

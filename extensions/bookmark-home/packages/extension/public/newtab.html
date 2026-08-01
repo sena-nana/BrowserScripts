@@ -108,6 +108,15 @@
           </form>
         </section>
         <button
+          id="open-organizer"
+          class="open-organizer-button"
+          type="button"
+          aria-label="Organize bookmarks"
+          data-i18n-aria="organizeBookmarks"
+        >
+          <span aria-hidden="true">✦</span>
+        </button>
+        <button
           id="open-settings"
           class="open-settings-button"
           type="button"
@@ -122,6 +131,7 @@
     <div id="popover-root"></div>
     <div id="dialog-root"></div>
     <div id="settings-root"></div>
+    <div id="organizer-root"></div>
     <div id="toast" role="status" aria-live="polite"></div>
     <script type="module" src="./main.js"></script>
   </body>
